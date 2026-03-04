@@ -1,0 +1,229 @@
+[
+  {
+    "id": "7e59b5d4-b435-4a3f-8340-d48db56c59a4",
+    "filename": "28668e20-8247-4acd-b8b5-82e15533321d.jpg",
+    "imageUrl": "/uploads/28668e20-8247-4acd-b8b5-82e15533321d.jpg",
+    "category": "outerwear",
+    "subcategory": "trench coat",
+    "primaryColor": "black",
+    "secondaryColor": null,
+    "pattern": "solid",
+    "material": "synthetic blend",
+    "style": "smart casual",
+    "season": [
+      "spring",
+      "autumn",
+      "winter"
+    ],
+    "occasionTags": [
+      "work",
+      "casual",
+      "dinner",
+      "date",
+      "outdoor"
+    ],
+    "description": "A men's black double-breasted trench coat featuring a classic collar, button-front closure, a shoulder flap, and adjustable cuff straps, suitable for a smart casual look.",
+    "fit": "regular",
+    "dateAdded": "2026-03-02T20:56:23.437Z"
+  },
+  {
+    "id": "563374ea-be67-437f-b950-ddff74d76777",
+    "filename": "7fbd1d41-f7c1-46aa-a1c6-9913cebd68a5.jpg",
+    "imageUrl": "/uploads/7fbd1d41-f7c1-46aa-a1c6-9913cebd68a5.jpg",
+    "category": "top",
+    "subcategory": "short sleeve shirt",
+    "primaryColor": "navy blue",
+    "secondaryColor": "white",
+    "pattern": "polka dot",
+    "material": "cotton",
+    "style": "casual",
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "occasionTags": [
+      "casual",
+      "dinner",
+      "party",
+      "date"
+    ],
+    "description": "A men's navy blue short sleeve button-up shirt featuring a white polka dot pattern and a button-down collar.",
+    "fit": "regular",
+    "dateAdded": "2026-03-02T20:56:46.798Z"
+  },
+  {
+    "id": "f68c9fa4-4850-4262-90cd-5a52b1cdf63c",
+    "filename": "0b731774-f80b-42f7-9691-0041856979ae.jpg",
+    "imageUrl": "/uploads/0b731774-f80b-42f7-9691-0041856979ae.jpg",
+    "category": "top",
+    "subcategory": "short-sleeve shirt",
+    "primaryColor": "gray",
+    "secondaryColor": null,
+    "pattern": "solid",
+    "material": "cotton",
+    "style": "smart casual",
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "occasionTags": [
+      "casual",
+      "date",
+      "outdoor"
+    ],
+    "description": "A men's light gray short-sleeve popover shirt with a button-down collar and a single chest pocket.",
+    "fit": "regular",
+    "dateAdded": "2026-03-02T20:57:25.291Z"
+  },
+  {
+    "id": "d40721c3-c4af-4f81-b420-d12066fc12b7",
+    "filename": "16eb2076-7236-4bb1-83fc-2358e8804623.jpg",
+    "imageUrl": "/uploads/16eb2076-7236-4bb1-83fc-2358e8804623.jpg",
+    "category": "top",
+    "subcategory": "shirt",
+    "primaryColor": "blue",
+    "secondaryColor": "white",
+    "pattern": "striped",
+    "material": "cotton",
+    "style": "casual",
+    "season": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
+    "occasionTags": [
+      "casual",
+      "work",
+      "date"
+    ],
+    "description": "A men's long-sleeve button-up shirt featuring vertical blue and white stripes.",
+    "fit": "regular",
+    "dateAdded": "2026-03-02T20:57:50.250Z"
+  },
+  {
+    "id": "09140e9e-a637-4c68-b8f6-f6cf5f1ce790",
+    "filename": "0211a4b7-7ca7-4ec1-a028-58c27089a23b.jpg",
+    "imageUrl": "/uploads/0211a4b7-7ca7-4ec1-a028-58c27089a23b.jpg",
+    "category": "top",
+    "subcategory": "flannel shirt",
+    "primaryColor": "red",
+    "secondaryColor": "navy blue",
+    "pattern": "checkered",
+    "material": "flannel",
+    "style": "casual",
+    "season": [
+      "autumn",
+      "winter",
+      "spring"
+    ],
+    "occasionTags": [
+      "casual",
+      "outdoor",
+      "date"
+    ],
+    "description": "A long-sleeve men's red and navy blue checkered flannel shirt with chest pockets.",
+    "fit": "regular",
+    "dateAdded": "2026-03-02T20:58:36.842Z"
+  },
+  {
+    "id": "283a8ec2-5833-47e8-acf4-ac92f6bca5a8",
+    "filename": "31e5c31b-d100-4c6d-a512-a4981d1c6597.jpg",
+    "imageUrl": "/uploads/31e5c31b-d100-4c6d-a512-a4981d1c6597.jpg",
+    "category": "top",
+    "subcategory": "button-up shirt",
+    "primaryColor": "white",
+    "secondaryColor": "light blue",
+    "pattern": "solid",
+    "material": "cotton",
+    "style": "smart casual",
+    "season": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
+    "occasionTags": [
+      "work",
+      "casual",
+      "dinner",
+      "date"
+    ],
+    "description": "A men's white long-sleeve button-up shirt featuring a subtle light blue trim detail on the chest pocket.",
+    "fit": "slim",
+    "dateAdded": "2026-03-02T20:58:47.120Z"
+  },
+  {
+    "id": "2f02beb0-7ca0-49a0-b873-a9f9e4ea295f",
+    "filename": "3856066b-9cf7-402a-93f6-d3c09191b802.jpg",
+    "imageUrl": "/uploads/3856066b-9cf7-402a-93f6-d3c09191b802.jpg",
+    "category": "bottom",
+    "subcategory": "trousers",
+    "primaryColor": "light beige",
+    "secondaryColor": null,
+    "pattern": "solid",
+    "material": "cotton blend",
+    "style": "casual",
+    "season": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
+    "occasionTags": [
+      "casual",
+      "outdoor"
+    ],
+    "description": "Light beige trousers featuring stitched knee panels and zippered ankles, offering a casual and modern look.",
+    "fit": "regular",
+    "dateAdded": "2026-03-02T21:00:17.956Z"
+  },
+  {
+    "id": "530a59fa-61cf-4835-923d-7c8fb3eb9955",
+    "filename": "6fa34ee4-764b-4d66-ae6d-1952c7931c46.jpg",
+    "imageUrl": "/uploads/6fa34ee4-764b-4d66-ae6d-1952c7931c46.jpg",
+    "category": "outerwear",
+    "subcategory": "leather jacket",
+    "primaryColor": "black",
+    "secondaryColor": null,
+    "pattern": "solid",
+    "material": "leather",
+    "style": "casual",
+    "season": [
+      "spring",
+      "autumn",
+      "winter"
+    ],
+    "occasionTags": [
+      "casual",
+      "dinner",
+      "party",
+      "outdoor",
+      "date"
+    ],
+    "description": "A classic black leather jacket featuring a stand-up collar and prominent silver zippers on the front closure and pockets.",
+    "fit": "regular",
+    "dateAdded": "2026-03-02T21:01:33.838Z"
+  },
+  {
+    "id": "cdf262a2-08c2-4df9-9476-9f25b58205e1",
+    "filename": "e8dcbf11-290b-4aff-87f1-597add36f935.jpg",
+    "imageUrl": "/uploads/e8dcbf11-290b-4aff-87f1-597add36f935.jpg",
+    "category": "bottom",
+    "subcategory": "joggers",
+    "primaryColor": "coral",
+    "secondaryColor": null,
+    "pattern": "none",
+    "material": "cotton blend",
+    "style": "casual",
+    "season": [
+      "spring",
+      "autumn"
+    ],
+    "occasionTags": [
+      "casual",
+      "outdoor",
+      "sport"
+    ],
+    "description": "A pair of coral-colored joggers with knee patches and ribbed cuffs, designed for comfort and active wear.",
+    "fit": "loose",
+    "dateAdded": "2026-03-03T12:34:29.829Z"
+  }
+]

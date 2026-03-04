@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DRESS•CODE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">DRESS<span class="dot">•</span>CODE</div>
+      <nav class="nav">
+        <button class="nav-btn active" data-view="closet">Closet</button>
+        <button class="nav-btn" data-view="search">Outfit AI</button>
+      </nav>
+      <button class="add-btn" id="openAddModal">+ Add Item</button>
+    </div>
+  </header>
+
+  <!-- ── VIEW: CLOSET ── -->
+  <main class="view active" id="view-closet">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">My Closet</h1>
+        <p class="view-subtitle" id="itemCount">0 items</p>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-chip active" data-filter="all">All</button>
+        <button class="filter-chip" data-filter="top">Tops</button>
+        <button class="filter-chip" data-filter="bottom">Bottoms</button>
+        <button class="filter-chip" data-filter="shoes">Shoes</button>
+        <button class="filter-chip" data-filter="outerwear">Outerwear</button>
+        <button class="filter-chip" data-filter="dress">Dresses</button>
+        <button class="filter-chip" data-filter="accessory">Accessories</button>
+      </div>
+    </div>
+
+    <div class="closet-grid" id="closetGrid">
+      <!-- Items render here -->
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">👗</div>
+      <h2>Your closet is empty</h2>
+      <p>Add your first clothing item to get started</p>
+      <button class="btn-primary" id="emptyAddBtn">+ Add Your First Item</button>
+    </div>
+  </main>
+
+  <!-- ── VIEW: OUTFIT AI / SEARCH ── -->
+  <main class="view" id="view-search">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">Outfit AI</h1>
+        <p class="view-subtitle">Tell me what you need</p>
+      </div>
+    </div>
+
+    <div class="search-section">
+      <div class="search-box">
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="e.g. smart casual for a Friday dinner..."
+        />
+        <button class="search-btn" id="searchBtn">Generate</button>
+      </div>
+      <div class="search-suggestions">
+        <span class="suggestion-label">Try:</span>
+        <button class="suggestion-chip" data-query="casual weekend look">casual weekend</button>
+        <button class="suggestion-chip" data-query="business meeting outfit">business meeting</button>
+        <button class="suggestion-chip" data-query="date night outfit">date night</button>
+        <button class="suggestion-chip" data-query="outdoor summer look">summer outdoor</button>
+      </div>
+    </div>
+
+    <div class="search-results" id="searchResults">
+      <!-- Results render here -->
+    </div>
+  </main>
+
+  <!-- ── MODAL: ADD ITEM ── -->
+  <div class="modal-overlay" id="addModalOverlay">
+    <div class="modal" id="addModal">
+      <div class="modal-header">
+        <h2 class="modal-title">Add Clothing Item</h2>
+        <button class="modal-close" id="closeAddModal">✕</button>
+      </div>
+
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="imageInput" accept="image/*" hidden />
+        <div class="upload-placeholder" id="uploadPlaceholder">
+          <div class="upload-icon">📷</div>
+          <p>Click to upload or drag & drop</p>
+          <span>JPG, PNG, WEBP up to 10MB</span>
+        </div>
+        <img class="upload-preview" id="uploadPreview" src="" alt="Preview" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancelAddBtn">Cancel</button>
+        <button class="btn-primary" id="analyzeBtn" disabled>✨ Analyze with AI</button>
+      </div>
+
+      <div class="analyzing-state" id="analyzingState">
+        <div class="spinner"></div>
+        <p>AI is analyzing your item...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ITEM DETAIL + RECOMMENDATIONS ── -->
+  <div class="modal-overlay" id="itemModalOverlay">
+    <div class="modal modal-wide" id="itemModal">
+      <button class="modal-close" id="closeItemModal">✕</button>
+      <div class="item-modal-body" id="itemModalBody">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast"></div>
+
+  <script src="js/db.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
