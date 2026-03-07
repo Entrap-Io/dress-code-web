@@ -1,9 +1,14 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-const { analyzeClothingImage } = require('../services/gemini');
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
+import { analyzeClothingImage } from '../services/gemini.js';
+
+// Recreate __dirname in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -92,7 +97,6 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     console.log(`✅ Item saved: ${newItem.subcategory} (${newItem.primaryColor})`);
     res.json({ success: true, item: newItem });
-
   } catch (err) {
     // Clean up uploaded file if analysis failed
     if (req.file && fs.existsSync(req.file.path)) {
@@ -125,4 +129,4 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

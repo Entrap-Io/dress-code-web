@@ -1,13 +1,22 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
+import 'dotenv/config';
+//console.log('GEMINI_API_KEY present?', !!process.env.GEMINI_API_KEY);
 
-const itemsRouter = require('./routes/items');
-const recommendRouter = require('./routes/recommend');
-const searchRouter = require('./routes/search');
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
+// Recreate __dirname in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+//dotenv.config();
+
+import itemsRouter from './routes/items.js';
+import recommendRouter from './routes/recommend.js';
+import searchRouter from './routes/search.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +38,7 @@ if (!fs.existsSync(itemsFile)) {
 
 // Middleware
 app.use(cors());
+app.use(express.json());
 
 // Serve frontend (one level up, then into frontend/)
 app.use(express.static(path.join(__dirname, '..', '..', 'frontend')));
@@ -41,8 +51,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', '..', 'frontend', 'index.html'));
 });
 
-app.use(express.json());
-
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
@@ -50,7 +58,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/items', itemsRouter);
 app.use('/api/recommend', recommendRouter);
 app.use('/api/search', searchRouter);
-
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,5 +1,5 @@
-const { GoogleGenAI } = require('@google/genai');
-const fs = require('fs');
+import { GoogleGenAI } from '@google/genai';
+import fs from 'fs';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -8,14 +8,16 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  * @param {string} imagePath - Absolute path to the uploaded image file
  * @returns {object} Structured clothing metadata
  */
-async function analyzeClothingImage(imagePath) {
+export async function analyzeClothingImage(imagePath) {
   const imageData = fs.readFileSync(imagePath);
   const base64Image = imageData.toString('base64');
   const mimeType = getMimeType(imagePath);
 
- const prompt = `You are a fashion expert AI. Analyze the main clothing item(s) in this image (the outfit may be worn by a person) and return ONLY a valid JSON object with no markdown, no explanation, just raw JSON.
+  const prompt = `You are a fashion expert AI. Analyze the main clothing item(s) in this image (the outfit may be worn by a person) and return ONLY a valid JSON object with no markdown, no explanation, just raw JSON.
+
 
 Focus on the primary garment(s) that stand out, not the background.
+
 
 Return this exact structure:
 {
@@ -31,7 +33,6 @@ Return this exact structure:
   "description": "One sentence natural description of the item",
   "fit": "slim|regular|oversized|loose|fitted"
 }`;
-
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
@@ -63,7 +64,7 @@ Return this exact structure:
  * @param {Array} closet - All items in the user's closet
  * @returns {Array} Array of recommended item IDs with reasoning
  */
-async function getOutfitRecommendations(targetItem, closet) {
+export async function getOutfitRecommendations(targetItem, closet) {
   // Exclude same category items and the target item itself
   const candidates = closet.filter(
     item => item.id !== targetItem.id && item.category !== targetItem.category
@@ -85,17 +86,21 @@ async function getOutfitRecommendations(targetItem, closet) {
 
   const prompt = `You are a fashion stylist AI. A user wants outfit recommendations to pair with this item:
 
+
 TARGET ITEM:
 ${JSON.stringify(targetItem, null, 2)}
 
+
 THEIR CLOSET (other items available):
 ${JSON.stringify(closetSummary, null, 2)}
+
 
 Select the best 3-5 items from the closet that pair well with the target item. Consider:
 - Color harmony (complementary, neutral, or tonal palettes)
 - Style consistency (don't mix formal blazer with athletic shorts)
 - Occasion matching (work items with work items, casual with casual)
 - Season compatibility
+
 
 Return ONLY a valid JSON array, no markdown, no explanation:
 [
@@ -105,6 +110,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
     "outfitScore": 85
   }
 ]
+
 
 outfitScore is 0-100 representing how well it pairs. Only include items scoring above 60.`;
 
@@ -124,7 +130,7 @@ outfitScore is 0-100 representing how well it pairs. Only include items scoring 
  * @param {Array} closet - All items in the user's closet
  * @returns {object} Curated outfit with reasoning
  */
-async function searchCloset(query, closet) {
+export async function searchCloset(query, closet) {
   if (closet.length === 0) {
     return { outfitItems: [], reasoning: 'Your closet is empty. Add some items first!' };
   }
@@ -142,11 +148,14 @@ async function searchCloset(query, closet) {
 
   const prompt = `You are a fashion stylist AI. The user is looking for: "${query}"
 
+
 Their closet:
 ${JSON.stringify(closetSummary, null, 2)}
 
+
 Curate a complete outfit from their closet that best matches what they're looking for.
 Try to include items from different categories (top, bottom, shoes, outerwear if needed, accessory if relevant).
+
 
 Return ONLY a valid JSON object, no markdown:
 {
@@ -178,5 +187,3 @@ function getMimeType(filePath) {
   };
   return types[ext] || 'image/jpeg';
 }
-
-module.exports = { analyzeClothingImage, getOutfitRecommendations, searchCloset };

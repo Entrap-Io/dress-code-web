@@ -1,7 +1,12 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const { getOutfitRecommendations } = require('../services/gemini');
+import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { getOutfitRecommendations } from '../services/gemini.js';
+
+// Recreate __dirname in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 const ITEMS_FILE = path.join(__dirname, '../../data/items.json');
@@ -59,4 +64,4 @@ router.post('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
