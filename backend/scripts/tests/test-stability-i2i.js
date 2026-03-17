@@ -2,7 +2,8 @@ import { createRequire } from 'module';
 import fs from 'fs';
 import FormData from 'form-data';
 import fetch from 'node-fetch'; // need to use global fetch or node-fetch
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '../../.env' });
 
 async function test() {
   if (!process.env.STABILITY_API_KEY) {

@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 
 import { analyzeClothingImage, generateProductImage, generateProductImageI2I, generateProductImageDirect } from '../services/gemini.js';
 import { isolateClothing, applyStudioMagic } from '../services/imageProcessing.js';
+import { generateFashionEmbedding } from '../services/huggingface.js';
 
 const router = express.Router();
 
@@ -236,12 +237,24 @@ router.post('/', upload.single('image'), async (req, res) => {
     if (maskPath && fs.existsSync(maskPath)) fs.unlinkSync(maskPath);
     maskPath = null;
 
-    // ── Step 4: Save item record ──────────────────────────────────
+    // ── Step 6: Generate Visual Embedding (Fashion-CLIP) ─────────
+    let styleVector = null;
+    try {
+      console.log(`🧠 Generating Fashion-CLIP embedding: ${bgRemovedFilename}`);
+      const bgRemovedBuffer = fs.readFileSync(isolatedPath); 
+      styleVector = await generateFashionEmbedding(bgRemovedBuffer);
+      console.log(`✅ Style vector generated (${styleVector?.length || 0} dims)`);
+    } catch (hfErr) {
+      console.warn(`⚠️  Fashion-CLIP failed: ${hfErr.message}`);
+    }
+
+    // ── Step 7: Save item record ──────────────────────────────────
     const newItem = {
       id: uuidv4(),
       filename: cleanFilename,
       imageUrl: `/uploads/${cleanFilename}`,
       ...metadata,
+      styleVector,
       dateAdded: new Date().toISOString(),
     };
 

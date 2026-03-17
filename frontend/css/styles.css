@@ -61,6 +61,22 @@ input { font-family: inherit; }
 .dot { color: var(--accent); }
 
 .nav { display: flex; gap: 0.25rem; flex: 1; }
+
+.weather-widget {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.75rem;
+  border-radius: 100px;
+  margin-right: 1rem;
+  font-size: 0.75rem;
+  color: var(--warm-gray);
+}
+.weather-temp { font-weight: 600; color: var(--white); }
+.weather-city { opacity: 0.7; }
+
 .nav-btn {
   padding: 0.4rem 1rem;
   border-radius: var(--radius);
@@ -76,6 +92,24 @@ input { font-family: inherit; }
   background: var(--border);
   color: var(--white);
 }
+
+.style-mode-selector {
+  margin-left: auto;
+  margin-right: 1rem;
+}
+.style-mode-selector select {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--white);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+.style-mode-selector select:hover { border-color: var(--accent); }
 
 .add-btn {
   padding: 0.5rem 1.25rem;
@@ -306,6 +340,98 @@ input { font-family: inherit; }
   letter-spacing: 0.03em;
   color: var(--accent);
 }
+.outfit-scores {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.outfit-scores .score-tag {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+}
+
+/* Dual-View Styling */
+.visualize-toggle-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  background: rgba(255,255,255,0.03);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.view-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--bg);
+  padding: 0.25rem;
+  border-radius: 8px;
+}
+
+.view-tab {
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--warm-gray);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.view-tab.active {
+  background: var(--card-bg);
+  color: var(--white);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.visualize-view {
+  min-height: 400px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.viz-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: var(--warm-gray);
+}
+
+.viz-image {
+  max-width: 100%;
+  max-height: 600px;
+  object-fit: contain;
+  transition: transform 0.5s ease;
+}
+
+.viz-actions {
+  padding: 1rem;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+}
+
+.viz-accuracy-tip {
+  font-size: 0.75rem;
+  color: var(--warm-gray);
+  font-style: italic;
+}
+
 .outfit-result-reasoning {
   font-size: 0.88rem;
   color: var(--warm-gray);
@@ -517,7 +643,7 @@ input { font-family: inherit; }
   object-fit: cover;
   max-height: 400px;
 }
-.item-modal-info {}
+
 .item-modal-category {
   font-size: 0.72rem;
   letter-spacing: 0.1em;
@@ -559,7 +685,7 @@ input { font-family: inherit; }
   color: var(--warm-gray);
 }
 
-.rec-section {}
+
 .rec-title {
   font-family: var(--font-display);
   font-size: 1.2rem;
@@ -592,10 +718,23 @@ input { font-family: inherit; }
 }
 .rec-card-info { padding: 0.5rem; }
 .rec-card-name { font-size: 0.75rem; text-transform: capitalize; }
+.rec-score-row {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.25rem 0;
+}
+.score-tag {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.score-tag.vis { background: rgba(200, 169, 110, 0.1); color: var(--accent); }
+.score-tag.logic { background: rgba(184, 176, 164, 0.1); color: var(--warm-gray); }
+
 .rec-card-reason {
   font-size: 0.68rem;
   color: var(--text-muted);
-  margin-top: 0.2rem;
   line-height: 1.4;
   font-style: italic;
 }

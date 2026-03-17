@@ -1,4 +1,5 @@
 export const TEXT_MODELS = [
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', tier: 'ultra', rpdLimit: 2 },
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tier: 'premium', rpdLimit: 20 },
   { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', tier: 'premium', rpdLimit: 20 },
   { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite', tier: 'lite', rpdLimit: 500 },

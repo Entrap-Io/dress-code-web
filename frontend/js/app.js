@@ -1,9 +1,10 @@
 // ─── DRESS-CODE APP ───────────────────────────────────────────
-const BACKEND_BASE = 'http://localhost:3001';
+// BACKEND_BASE is already defined in api.js
 
 // ── State ──────────────────────────────────────────────────────
 let currentFilter = 'all';
 let allItems = [];
+let currentWeather = null;
 
 // ── DOM refs ───────────────────────────────────────────────────
 const closetGrid = document.getElementById('closetGrid');
@@ -26,21 +27,59 @@ const itemModalBody = document.getElementById('itemModalBody');
 
 // ── Init ───────────────────────────────────────────────────────
 async function init() {
-  await loadItems();
-  setupEventListeners();
+  try {
+    console.log('💎 App Init Starting...');
+    await loadItems();
+  } catch (err) {
+    console.error('💥 Critical Load Error:', err);
+  } finally {
+    setupEventListeners();
+    console.log('✅ UI Event Listeners Ready');
+  }
 }
 
 async function loadItems() {
+  // 1. Fast Load from Local Cache (IndexedDB)
   try {
-    // Try server first, fall back to local DB
-    const serverItems = await api.getItems();
-    await syncItemsFromServer(serverItems);
-    allItems = serverItems;
-  } catch {
-    // Server might be down — use cached local items
-    allItems = await getLocalItems();
+    if (typeof getLocalItems === 'function') {
+      const local = await getLocalItems();
+      if (local && local.length > 0) {
+        allItems = local;
+        renderCloset();
+      }
+    }
+  } catch (err) {
+    console.warn('Local cache load failed:', err.message);
   }
-  renderCloset();
+
+  // 2. Background Sync from Server
+  try {
+    const serverItems = await api.getItems();
+    allItems = serverItems;
+    renderCloset();
+    // Update cache
+    if (typeof syncItemsFromServer === 'function') {
+      await syncItemsFromServer(serverItems);
+    }
+  } catch (err) {
+    console.error('Server sync failed:', err.message);
+    if (!allItems || allItems.length === 0) {
+      closetGrid.innerHTML = `<div class="search-empty" style="color:var(--red)">
+        <p>⚠️ Offline / Server Error</p>
+        <p style="font-size:0.8rem; margin-top:5px;">${err.message}</p>
+      </div>`;
+    }
+  }
+
+  // 3. Initialize Weather
+  try {
+    if (typeof weatherService !== 'undefined' && typeof weatherService.getCurrentWeather === 'function') {
+      currentWeather = await weatherService.getCurrentWeather();
+      updateWeatherWidget(currentWeather);
+    }
+  } catch (err) {
+    console.warn('Weather initialization failed:', err.message);
+  }
 }
 
 // ── Render Closet ──────────────────────────────────────────────
@@ -65,7 +104,7 @@ function renderCloset(filter = currentFilter) {
     return;
   }
 
-  closetGrid.innerHTML = filtered.map(item => `
+  closetGrid.innerHTML = (filtered || []).map(item => `
     <div class="item-card" data-id="${item.id}">
       <img
         class="item-card-img"
@@ -138,7 +177,6 @@ function setupEventListeners() {
   // Analyze button
   analyzeBtn.addEventListener('click', handleAnalyze);
 
-  // Mutual Exclusivity and Visibility for Options 3, 4, 5
   const optI2I = document.getElementById('optI2I');
   const optT2I = document.getElementById('optT2I');
   const optDirectAI = document.getElementById('optDirectAI');
@@ -261,7 +299,9 @@ async function handleAnalyze() {
 
     // Upload raw file + options — backend handles background removal + AI analysis
     const item = await api.uploadItem(selectedFile, options);
-    await saveItemLocally(item);
+    if (typeof saveItemLocally === 'function') {
+      await saveItemLocally(item);
+    }
     allItems.unshift(item);
     closeAddModal();
     // Reset to 'all' filter so the new item is always visible
@@ -285,7 +325,9 @@ async function handleDeleteItem(itemId) {
 
   try {
     await api.deleteItem(itemId);
-    await removeItemLocally(itemId);
+    if (typeof removeItemLocally === 'function') {
+      await removeItemLocally(itemId);
+    }
     allItems = allItems.filter(i => i.id !== itemId);
     renderCloset();
     showToast('Item removed from closet', 'info');
@@ -341,23 +383,28 @@ async function openItemModal(itemId) {
 
   // Load recommendations
   try {
-    const { recommendations } = await api.getRecommendations(itemId);
+    const stylingMode = document.getElementById('stylingMode').value;
+    const { recommendations } = await api.getRecommendations(item.id, stylingMode, currentWeather);
     const recGrid = document.getElementById('recGrid');
     const recLoading = itemModalBody.querySelector('.rec-loading');
     const recEmpty = document.getElementById('recEmpty');
 
     recLoading.style.display = 'none';
 
-    if (recommendations.length === 0) {
+    if (!recommendations || recommendations.length === 0) {
       recEmpty.style.display = 'block';
     } else {
       recGrid.style.display = 'grid';
-      recGrid.innerHTML = recommendations.map(rec => `
+      recGrid.innerHTML = (recommendations || []).map(rec => `
         <div class="rec-card">
           <img src="${BACKEND_BASE}${rec.imageUrl}" alt="${rec.subcategory}" loading="lazy" />
           <div class="rec-card-info">
             <div class="rec-card-name">${rec.subcategory}</div>
-            <div class="rec-card-reason">${rec.reason}</div>
+            <div class="rec-score-row">
+              <span class="score-tag vis" title="Visual Similarity">V: ${((rec.visualSimilarity || 0) * 100).toFixed(0)}%</span>
+              <span class="score-tag logic" title="Logic Compatibility">L: ${((rec.logicScore || 0) * 100).toFixed(0)}%</span>
+            </div>
+            <div class="rec-card-reason">${rec.reason || 'No reason provided.'}</div>
           </div>
         </div>
       `).join('');
@@ -373,8 +420,10 @@ function closeItemModal() {
 }
 
 // ── Search ─────────────────────────────────────────────────────
+// ── Search & Visualization ─────────────────────────────────────────
 async function handleSearch() {
-  const query = document.getElementById('searchInput').value.trim();
+  const searchInput = document.getElementById('searchInput');
+  const query = searchInput.value.trim();
   if (!query) return;
 
   const resultsDiv = document.getElementById('searchResults');
@@ -389,36 +438,124 @@ async function handleSearch() {
   searchBtn.disabled = true;
 
   try {
-    const { outfit, message } = await api.searchOutfit(query);
+    const stylingMode = document.getElementById('stylingMode').value;
+    const data = await api.searchOutfit(query, stylingMode, currentWeather);
+    const outfit = data.outfit;
+    const message = data.message;
 
-    if (!outfit || outfit.items.length === 0) {
-      resultsDiv.innerHTML = `<p class="search-empty">${message || 'No matching items found. Try adding more clothes!'}</p>`;
+    if (!outfit || !outfit.items || outfit.items.length === 0) {
+      resultsDiv.innerHTML = `<div class="search-empty">
+        <p>${message || 'No matching items found.'}</p>
+        <p style="font-size:0.9rem; margin-top:10px;">Try adding more clothes or adjusting your styling mode!</p>
+      </div>`;
       return;
     }
+
+    // Capture IDs for visualization
+    const itemIds = (outfit.items || []).map(i => i.id);
 
     resultsDiv.innerHTML = `
       <div class="outfit-result">
         <div class="outfit-result-header">
-          <div class="outfit-result-name">${outfit.name}</div>
-          <p class="outfit-result-reasoning">${outfit.reasoning}</p>
-        </div>
-        <div class="outfit-items-grid">
-          ${outfit.items.map(item => `
-            <div class="outfit-item-card">
-              <img src="${BACKEND_BASE}${item.imageUrl}" alt="${item.subcategory}" loading="lazy" />
-              <div class="outfit-item-info">
-                <div class="outfit-item-role">${item.role}</div>
-                <div class="outfit-item-name">${item.subcategory}</div>
-              </div>
+          <div class="outfit-result-name">${outfit.outfitName || "Your Curated Look"}</div>
+          <div class="visualize-toggle-container">
+            <div class="view-tabs">
+              <button class="view-tab active" data-view="products">Product View</button>
+              <button class="view-tab" data-view="ai-visual">✨ AI Visualizer</button>
             </div>
-          `).join('')}
+            <div class="outfit-scores">
+              <span class="score-tag vis" title="Visual Cohesion">V: ${((outfit.visualCohesion || 0) * 100).toFixed(0)}%</span>
+              <span class="score-tag logic" title="Logical Harmony">L: ${((outfit.logicHarmony || 0) * 100).toFixed(0)}%</span>
+            </div>
+          </div>
+          <p class="outfit-result-reasoning">${outfit.reasoning || "Crafted specifically for your request."}</p>
+        </div>
+
+        <div class="outfit-views">
+          <div class="outfit-items-grid" id="productGrid">
+            ${(outfit.items || []).map(item => `
+              <div class="outfit-item-card">
+                <img src="${BACKEND_BASE}${item.imageUrl}" alt="${item.subcategory}" onerror="this.src='https://via.placeholder.com/150?text=Error'" />
+                <div class="outfit-item-info">
+                  <div class="outfit-item-role">${item.role || item.subcategory}</div>
+                  <div class="outfit-item-name">${item.subcategory}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="visualize-view" id="aiVisualView" style="display:none">
+            <div class="viz-placeholder">
+              <div class="spinner"></div>
+              <p>Preparing professional visualization...</p>
+            </div>
+            <img class="viz-image" id="vizImage" src="" alt="Outfit Visualization" style="display:none" />
+            <div class="viz-actions" id="vizActions" style="display:none">
+              <p class="viz-accuracy-tip">Accuracy: Verified against style vectors.</p>
+            </div>
+          </div>
         </div>
       </div>
     `;
+
+    // Attach local listeners to the newly rendered tabs
+    const productGrid = resultsDiv.querySelector('#productGrid');
+    const aiVisualView = resultsDiv.querySelector('#aiVisualView');
+    const tabs = resultsDiv.querySelectorAll('.view-tab');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', async () => {
+        const view = tab.getAttribute('data-view');
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        if (view === 'products') {
+          if (productGrid) productGrid.style.display = 'grid';
+          if (aiVisualView) aiVisualView.style.display = 'none';
+        } else {
+          if (productGrid) productGrid.style.display = 'none';
+          if (aiVisualView) aiVisualView.style.display = 'flex';
+          
+          const vizImage = aiVisualView.querySelector('#vizImage');
+          // Only trigger if image is empty or has been reset
+          if (!vizImage.src || vizImage.src === window.location.href || vizImage.src.endsWith('/')) {
+            await handleVisualize(itemIds, aiVisualView);
+          }
+        }
+      });
+    });
+
   } catch (err) {
-    resultsDiv.innerHTML = `<p class="search-empty" style="color:var(--red)">❌ ${err.message}</p>`;
+    resultsDiv.innerHTML = `<div class="search-empty" style="color:var(--red)">
+      <p>❌ Search Failed</p>
+      <p style="font-size:0.8rem; margin-top:5px;">${err.message}</p>
+    </div>`;
   } finally {
     searchBtn.disabled = false;
+  }
+}
+
+async function handleVisualize(itemIds, parentEl) {
+  const vizPlaceholder = parentEl.querySelector('.viz-placeholder');
+  const vizImage = parentEl.querySelector('#vizImage');
+  const vizActions = parentEl.querySelector('#vizActions');
+  const stylingMode = document.getElementById('stylingMode').value;
+
+  try {
+    const { imageUrl } = await api.visualizeOutfit(itemIds, stylingMode, currentWeather);
+    
+    if (imageUrl) {
+      vizImage.src = `${BACKEND_BASE}${imageUrl}`;
+      vizImage.onload = () => {
+        vizPlaceholder.style.display = 'none';
+        vizImage.style.display = 'block';
+        vizActions.style.display = 'flex';
+      };
+    } else {
+      throw new Error("No image URL returned from AI.");
+    }
+  } catch (err) {
+    vizPlaceholder.innerHTML = `<p style="color:var(--red); font-size:0.9rem;">❌ Visualization Failed: ${err.message}</p>`;
   }
 }
 
@@ -430,6 +567,24 @@ function showToast(message, type = 'info') {
   toast.className = `toast show ${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 3500);
+}
+
+function updateWeatherWidget(weather) {
+  const widget = document.getElementById('weatherWidget');
+  if (!weather) return;
+
+  const icons = {
+    'Clear sky': '☀️',
+    'Mainly clear': '🌤️', 'Partly cloudy': '⛅', 'Overcast': '☁️',
+    'Fog': '😶‍🌫️', 'Drizzle': '🌦️', 'Rain': '🌧️', 'Snow': '❄️', 'Thunderstorm': '⛈️'
+  };
+
+  const genericCondition = Object.keys(icons).find(key => weather.conditionText.includes(key)) || 'Clear sky';
+  
+  widget.querySelector('.weather-icon').textContent = icons[genericCondition];
+  widget.querySelector('.weather-temp').textContent = `${weather.temp}°C`;
+  widget.querySelector('.weather-city').textContent = weather.city;
+  widget.style.display = 'flex';
 }
 
 // ── Start ──────────────────────────────────────────────────────

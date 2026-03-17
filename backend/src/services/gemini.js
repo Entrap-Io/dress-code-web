@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 import { getTextChain, getT2IChain, getI2IChain, getDirectAiChain } from '../config/models.js';
+import { calculateSimilarity, scoreOutfitCompatibility } from './huggingface.js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -70,11 +71,13 @@ Return this exact JSON structure:
   "season": ["spring", "summer"],
   "occasionTags": ["casual", "outdoor"],
   "description": "A relaxed-fit crew-neck tee in washed black with subtle distressing, giving it a lived-in streetwear feel.",
-  "fit": "regular"
+  "fit": "regular",
+  "gender": "unisex"
 }
 
 Field definitions:
 - hasHuman: boolean — true if a person's body is visible, false if garment only
+- gender: man | woman | unisex — classify the garment's target audience or cut
 - category: one of top | bottom | shoes | outerwear | accessory | dress | suit
 - subcategory: specific garment name (t-shirt, chinos, Chelsea boot, parka, tote bag, etc.)
 - primaryColor: most dominant color, human-readable
@@ -105,9 +108,8 @@ Field definitions:
       ],
     });
 
-    const text = response.candidates[0].content.parts[0].text.trim();
-    const clean = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
+    const text = response.candidates[0].content.parts[0].text;
+    return extractJSON(text);
   }, 'TextAnalysis');
 }
 
@@ -462,10 +464,17 @@ FINAL DIRECTIVE: The resulting image must be an EMPTY white studio containing ON
 
 // ── Outfit Recommendations ──────────────────────────────────────
 
-export async function getOutfitRecommendations(targetItem, closet) {
-  const candidates = closet.filter(
-    item => item.id !== targetItem.id && item.category !== targetItem.category
-  );
+export async function getOutfitRecommendations(targetItem, closet, stylingMode = 'unisex', weather = null) {
+  const candidates = closet.filter(item => {
+    if (item.id === targetItem.id) return false;
+    if (item.category === targetItem.category) return false;
+
+    // Gender Filtering Logic
+    if (stylingMode === 'man' && item.gender === 'woman') return false;
+    if (stylingMode === 'woman' && item.gender === 'man') return false;
+    
+    return true;
+  });
 
   if (candidates.length === 0) return [];
 
@@ -481,9 +490,29 @@ export async function getOutfitRecommendations(targetItem, closet) {
     occasionTags: targetItem.occasionTags,
     fit: targetItem.fit,
     description: targetItem.description,
+    styleVector: !!targetItem.styleVector ? 'AVAILABLE' : 'MISSING'
   };
 
-  const closetSummary = candidates.map(item => ({
+  // ── Phase 1 & 2: Pre-rank by Vision & Logic ──────────────────
+  const scoredCandidates = candidates.map(item => {
+    const visualSimilarity = targetItem.styleVector && item.styleVector 
+      ? calculateSimilarity(targetItem.styleVector, item.styleVector) 
+      : 0.5;
+    
+    // Heuristic compatibility based on categories
+    const isComplementary = targetItem.category !== item.category;
+    const logicScore = isComplementary ? (visualSimilarity * 1.2) : (visualSimilarity * 0.8);
+
+    return {
+      ...item,
+      visualSimilarity,
+      logicScore: Math.min(1, logicScore)
+    };
+  })
+  .sort((a, b) => b.logicScore - a.logicScore)
+  .slice(0, 15); // Send more candidates to Gemini to choose from
+
+  const closetSummary = scoredCandidates.map(item => ({
     id: item.id,
     category: item.category,
     subcategory: item.subcategory,
@@ -495,36 +524,48 @@ export async function getOutfitRecommendations(targetItem, closet) {
     season: item.season,
     occasionTags: item.occasionTags,
     description: item.description,
+    visualSimilarity: item.visualSimilarity.toFixed(2),
+    logicScore: item.logicScore.toFixed(2)
   }));
 
+  const weatherContext = weather 
+    ? `ENVIRONMENTAL CONTEXT in ${weather.city}: Current temp is ${weather.temp}°C and the sky is ${weather.conditionText}.`
+    : "";
+
   const prompt = `You are an expert fashion stylist. Recommend items from a user's closet to pair with their selected piece.
+  
+  CONTEXT: I have pre-calculated "Visual Similarity" and "Logic Compatibility" scores for these items using a specialized fashion engine. Use these scores as a guide, but make the final creative decision.
 
 SELECTED ITEM:
 ${JSON.stringify(targetSummary, null, 2)}
 
-CLOSET (candidates to pair with):
+STYLING MODE: ${stylingMode}
+${weatherContext}
+
+CLOSET (top 15 candidates filtered by AI logic):
 ${JSON.stringify(closetSummary, null, 2)}
 
 Pairing rules:
-- Color harmony: complementary colors, neutrals with anything, or tonal dressing — avoid clashing
-- Style match: keep the overall vibe consistent (don't pair a formal blazer with athletic shorts)
-- Occasion overlap: items should share at least one occasion tag
-- Season compatibility: avoid pairing summer-only with winter-only items
-- Pattern discipline: if the selected item has a bold pattern, prefer solids as pairings
-- Consider colorTone: warm tones pair better with warm, cool with cool, neutrals work with both
+- Color harmony: complementary colors, neutrals with anything, or tonal dressing
+- Style match: keep the overall vibe consistent
+- Occasion/Season match: must be appropriate for the same context. Respect the ENVIRONMENTAL CONTEXT above (e.g., if it's raining or cold, prioritize suitable layers).
+- Use 'logicScore' (0-1) as a strong indicator of technical compatibility.
+- Use 'visualSimilarity' (0-1) to understand how well the textures and colors match visually.
 
-Select 3–5 items that genuinely pair well. Skip items that clash or are redundant.
+Select 3–5 items that genuinely pair well.
 
 Return ONLY a valid JSON array, no markdown:
 [
   {
     "itemId": "the item id from the closet",
-    "reason": "One sentence: specific reason this works (mention color, style, or occasion harmony)",
-    "outfitScore": 85
+    "reason": "Specific stylistic reason (mention color, texture, silhouette, and how it fits the weather/mode)",
+    "outfitScore": 85,
+    "visualSimilarity": 0.92,
+    "logicScore": 0.88
   }
 ]
 
-outfitScore is 0–100. Only include items with score above 65. Sort by score descending.`;
+outfitScore is 0–100. Combine your expert judgment with the technical scores provided.`;
 
   const chain = getTextChain();
 
@@ -535,15 +576,37 @@ outfitScore is 0–100. Only include items with score above 65. Sort by score de
       contents: [{ parts: [{ text: prompt }] }],
     });
 
-    const text = response.candidates[0].content.parts[0].text.trim();
-    const clean = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
+    let recs = [];
+    try {
+      const text = response.candidates[0].content.parts[0].text;
+      recs = extractJSON(text);
+      if (!Array.isArray(recs)) {
+        // If it returned a single object, wrap it
+        recs = typeof recs === 'object' && recs !== null ? [recs] : [];
+      }
+    } catch (e) {
+      console.error(`❌ Failed to parse recommendations JSON: ${e.message}`);
+      return [];
+    }
+
+    // Attach technical scores back from our scoredCandidates to the final Gemini choices
+    return (recs || []).map(rec => {
+      const itemId = rec.itemId || rec.id; // Support both naming conventions
+      const technical = (scoredCandidates || []).find(c => c.id === itemId);
+      return {
+        itemId: itemId,
+        reason: rec.reason || "Matched by style similarity.",
+        outfitScore: rec.outfitScore || 70,
+        visualSimilarity: technical?.visualSimilarity || 0,
+        logicScore: technical?.logicScore || 0
+      };
+    }).filter(r => r.itemId); // Ensure we have an ID
   }, 'Recommendations');
 }
 
 // ── Closet Search ───────────────────────────────────────────────
 
-export async function searchCloset(query, closet) {
+export async function searchCloset(query, closet, stylingMode = 'unisex', weather = null) {
   if (closet.length === 0) {
     return { outfitItems: [], reasoning: 'Your closet is empty. Add some items first!' };
   }
@@ -559,11 +622,18 @@ export async function searchCloset(query, closet) {
     occasionTags: item.occasionTags,
     season: item.season,
     description: item.description,
-  }));
+    gender: item.gender
+  })).filter(item => {
+    if (stylingMode === 'man' && item.gender === 'woman') return false;
+    if (stylingMode === 'woman' && item.gender === 'man') return false;
+    return true;
+  });
 
   const prompt = `You are an expert personal stylist with access to a user's wardrobe. Build a complete outfit for their request.
 
 USER REQUEST: "${query}"
+STYLING MODE: ${stylingMode}
+${weather ? `CURRENT WEATHER in ${weather.city}: ${weather.temp}°C, ${weather.conditionText}.` : ""}
 
 THEIR WARDROBE:
 ${JSON.stringify(closetSummary, null, 2)}
@@ -593,11 +663,70 @@ Return ONLY a valid JSON object, no markdown:
       contents: [{ parts: [{ text: prompt }] }],
     });
 
-    const text = response.candidates[0].content.parts[0].text.trim();
-    const clean = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
+    let result;
+    try {
+      const text = response.candidates[0].content.parts[0].text;
+      result = extractJSON(text);
+    } catch (e) {
+      console.error(`❌ Failed to parse searchCloset JSON: ${e.message}`);
+      return { items: [], reasoning: "Could not parse AI response." };
+    }
+
+    // [ROBUSTNESS] Multi-layer normalization for LLM output
+    let rawOutfit = [];
+    if (Array.isArray(result)) {
+      rawOutfit = result;
+      result = { outfitItems: result, outfitName: "Suggested Outfit", reasoning: "Curated based on your query." };
+    } else if (result && result.outfitItems && Array.isArray(result.outfitItems)) {
+      rawOutfit = result.outfitItems;
+    } else if (result && typeof result === 'object') {
+      // Handle "top", "bottom", "shoes" style object
+      rawOutfit = Object.entries(result)
+        .filter(([key, value]) => value && (typeof value === 'string' || value.itemId))
+        .map(([key, value]) => (typeof value === 'string' ? { itemId: value, role: key } : value));
+    }
+
+    const enrichedItems = (rawOutfit || [])
+      .map(oi => {
+        const id = typeof oi === 'string' ? oi : (oi.itemId || oi.id);
+        const item = closet.find(c => c.id === id);
+        if (!item) return null;
+        return { ...item, role: oi.role || item.subcategory };
+      })
+      .filter(Boolean);
+
+    // Calculate Aggregate Outfit Cohesion (V & L) using items with styleVector
+    let totalSim = 0;
+    let totalLogic = 0;
+    let pairs = 0;
+
+    for (let i = 0; i < enrichedItems.length; i++) {
+      for (let j = i + 1; j < enrichedItems.length; j++) {
+        const a = enrichedItems[i];
+        const b = enrichedItems[j];
+        if (a && b && a.styleVector && b.styleVector) {
+          const sim = calculateSimilarity(a.styleVector, b.styleVector);
+          if (typeof sim === 'number' && !isNaN(sim)) {
+            totalSim += sim;
+            const isComp = a.category !== b.category;
+            totalLogic += isComp ? 0.9 : 0.4; 
+            pairs++;
+          }
+        }
+      }
+    }
+
+    return {
+      outfitName: result.outfitName || "Suggested Outfit",
+      reasoning: result.reasoning || "An ensemble curated by your AI stylist.",
+      items: enrichedItems,
+      visualCohesion: pairs > 0 ? (totalSim / pairs) : 0,
+      logicHarmony: pairs > 0 ? (totalLogic / pairs) : 0
+    };
   }, 'Search');
 }
+
+
 
 // ── Helpers ─────────────────────────────────────────────────────
 
@@ -611,4 +740,84 @@ function getMimeType(filePath) {
     gif: 'image/gif',
   };
   return types[ext] || 'image/jpeg';
+}
+
+/**
+ * Robustly extracts JSON even if wrapped in markdown or thinking blocks
+ */
+function extractJSON(text) {
+  try {
+    // 1. Try direct parse first
+    return JSON.parse(text.trim());
+  } catch (e) {
+    // 2. Try stripping markdown blocks
+    try {
+      const clean = text.replace(/```json|```/g, '').trim();
+      return JSON.parse(clean);
+    } catch (e2) {
+      // 3. Try finding first { and last }
+      try {
+        const first = text.indexOf('{');
+        const last = text.lastIndexOf('}');
+        if (first !== -1 && last !== -1) {
+          return JSON.parse(text.substring(first, last + 1));
+        }
+        // Try finding [ and ] for arrays
+        const firstArr = text.indexOf('[');
+        const lastArr = text.lastIndexOf(']');
+        if (firstArr !== -1 && lastArr !== -1) {
+          return JSON.parse(text.substring(firstArr, lastArr + 1));
+        }
+      } catch (e3) {
+        throw new Error(`Failed to extract valid JSON: ${e3.message}`);
+      }
+    }
+  }
+  throw new Error("No JSON structure found in response.");
+}
+
+// ── Outfit Visualization (Phase 4) ───────────────────────────
+
+export async function visualizeOutfit(outfitItems, weather = null, stylingMode = 'unisex') {
+  const itemDescriptions = (outfitItems || []).map(item => 
+    `${item.subcategory} (${item.primaryColor}, ${item.style} style, ${item.material || ''} ${item.pattern || ''})`
+  ).join(', ');
+
+  const weatherContext = weather 
+    ? `The setting is ${weather.city} at ${weather.temp}°C (${weather.conditionText}).`
+    : "";
+
+  const prompt = `Create a high-fidelity, professional fashion studio photograph of a full outfit ensemble.
+  
+OUTFIT ITEMS: ${itemDescriptions}.
+STYLING MODE: ${stylingMode}.
+${weatherContext}
+
+STYLE INSTRUCTIONS:
+- [CRITICAL] NO HUMANS, NO MODELS, NO SKIN, NO VISIBLE BODY PARTS.
+- Use a "Ghost Mannequin" or "Floating Ensemble" style where the clothes look as if they are being worn but the person is invisible.
+- The outfit elements must be perfectly aligned and layered as a complete wearable look.
+- Maintain high accuracy for the colors and materials described: ${itemDescriptions}.
+- The lighting should be soft, professional studio lighting.
+- The background must be pure, solid white (#FFFFFF).
+- The overall look should be high-end, clean e-commerce catalog photography.`;
+
+  console.log(`📸 Visualizing outfit via Nanobana Fast...`);
+
+  const modelId = 'gemini-2.5-flash-image'; // Nanobana Fast
+
+  const response = await ai.models.generateContent({
+    model: modelId,
+    contents: [{ parts: [{ text: prompt }] }],
+  });
+
+  const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+  if (!imagePart) {
+    throw new Error('Nanobana returned no image data');
+  }
+
+  return {
+    imageBuffer: Buffer.from(imagePart.inlineData.data, 'base64'),
+    model: modelId
+  };
 }

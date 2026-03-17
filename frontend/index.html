@@ -10,7 +10,6 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
     rel="stylesheet" />
-  <script src="https://unpkg.com/dexie/dist/dexie.js" defer></script>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 
@@ -20,10 +19,22 @@
   <header class="header">
     <div class="header-inner">
       <div class="logo">DRESS<span class="dot">•</span>CODE</div>
+      <div class="weather-widget" id="weatherWidget" style="display:none">
+        <span class="weather-icon">🌤️</span>
+        <span class="weather-temp">--°C</span>
+        <span class="weather-city">Loading...</span>
+      </div>
       <nav class="nav">
         <button class="nav-btn active" data-view="closet">Closet</button>
         <button class="nav-btn" data-view="search">Outfit AI</button>
       </nav>
+      <div class="style-mode-selector">
+        <select id="stylingMode">
+          <option value="unisex">🌐 Unisex Mode</option>
+          <option value="man">👔 Man Mode</option>
+          <option value="woman">👗 Woman Mode</option>
+        </select>
+      </div>
       <button class="add-btn" id="openAddModal">+ Add Item</button>
     </div>
   </header>
@@ -190,8 +201,10 @@
   <!-- Toast notification -->
   <div class="toast" id="toast"></div>
 
-  <script src="js/db.js" defer></script>
-  <script src="js/api.js" defer></script>
+  <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/app.js" defer></script>
 </body>
 

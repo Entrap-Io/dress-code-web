@@ -1,5 +1,6 @@
 import fs from 'fs';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '../../.env' });
 
 async function test() {
   const b64 = `data:image/png;base64,${fs.readFileSync('uploads/test.png').toString('base64')}`;

@@ -1,8 +1,9 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { getOutfitRecommendations } from '../services/gemini.js';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { removeBackground } from '@imgly/background-removal-node';
+import { getOutfitRecommendations, searchCloset, visualizeOutfit } from '../services/gemini.js';
 
 // Recreate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -19,11 +20,27 @@ function readItems() {
   }
 }
 
-// POST /api/recommend
-// Body: { itemId: "uuid" }
-router.post('/', async (req, res) => {
-  const { itemId } = req.body;
+// ── Search Handler Logic ──────────────────────────────
+async function handleSearch(req, res) {
+  try {
+    const { query, stylingMode, weather } = req.body;
+    const items = readItems();
+    const outfit = await searchCloset(query, items, stylingMode || 'unisex', weather);
+    res.json({ success: true, outfit });
+  } catch (err) {
+    console.error('❌ Search error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
 
+// POST /api/recommend (Base) or /api/search (Base)
+router.post('/', async (req, res) => {
+  // If this is hitting /api/search directly, treat it as /search
+  if (req.baseUrl === '/api/search') {
+    return handleSearch(req, res);
+  }
+
+  const { itemId } = req.body;
   if (!itemId) {
     return res.status(400).json({ success: false, error: 'itemId is required' });
   }
@@ -44,22 +61,83 @@ router.post('/', async (req, res) => {
       });
     }
 
-    console.log(`👗 Getting recommendations for: ${targetItem.subcategory}`);
-    const recommendations = await getOutfitRecommendations(targetItem, items);
+    const stylingMode = req.body.stylingMode || req.query.stylingMode || 'unisex';
+    let weather = null;
+    try {
+      if (req.body.weather) {
+        weather = typeof req.body.weather === 'string' ? JSON.parse(req.body.weather) : req.body.weather;
+      } else if (req.query.weather) {
+        weather = typeof req.query.weather === 'string' ? JSON.parse(req.query.weather) : req.query.weather;
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not parse weather context:', e.message);
+    }
+
+    console.log(`👗 Getting recommendations for: ${targetItem.subcategory} (Mode: ${stylingMode})`);
+    const recommendations = await getOutfitRecommendations(targetItem, items, stylingMode, weather);
 
     // Enrich recommendations with full item data
-    const enriched = recommendations
+    const enriched = (recommendations || [])
       .map(rec => {
         const item = items.find(i => i.id === rec.itemId);
         if (!item) return null;
-        return { ...item, reason: rec.reason, outfitScore: rec.outfitScore };
+        return { 
+          ...item, 
+          reason: rec.reason, 
+          outfitScore: rec.outfitScore,
+          visualSimilarity: rec.visualSimilarity,
+          logicScore: rec.logicScore
+        };
       })
-      .filter(Boolean)
-      .sort((a, b) => b.outfitScore - a.outfitScore);
+      .filter(Boolean);
 
     res.json({ success: true, targetItem, recommendations: enriched });
   } catch (err) {
     console.error('❌ Recommendation error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Alias for search
+router.post('/search', handleSearch);
+
+// POST /api/recommend/visualize
+router.post('/visualize', async (req, res) => {
+  try {
+    const { itemIds, stylingMode, weather } = req.body;
+    const items = readItems();
+    const outfitItems = (itemIds || []).map(id => items.find(i => i.id === id)).filter(Boolean);
+
+    if (outfitItems.length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid items provided for visualization' });
+    }
+
+    const { imageBuffer } = await visualizeOutfit(outfitItems, weather, stylingMode || 'unisex');
+
+    // Save the visualization to a permanent file
+    const filename = `viz_${Date.now()}.png`;
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    const filePath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filePath, imageBuffer);
+
+    // [PHASE 4] Background Removal for clean finish
+    console.log(`🧼 Removing background from visualization: ${filename}`);
+    try {
+      const fileUrl = pathToFileURL(filePath).toString();
+      const bgBlob = await removeBackground(fileUrl);
+      const bgBuffer = Buffer.from(await bgBlob.arrayBuffer());
+      fs.writeFileSync(filePath, bgBuffer); // Overwrite with transparent version
+      console.log(`✅ Visualization background removed`);
+    } catch (bgErr) {
+      console.warn(`⚠️ Background removal failed for visualization: ${bgErr.message}`);
+    }
+
+    res.json({ 
+      success: true, 
+      imageUrl: `/uploads/${filename}`
+    });
+  } catch (err) {
+    console.error('❌ Visualization error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });

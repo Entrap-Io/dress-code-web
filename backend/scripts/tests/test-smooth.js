@@ -2,7 +2,7 @@ import { createRequire } from 'module';
 import fs from 'fs';
 
 const imglyRequire = createRequire(
-  new URL('file://' + process.cwd() + '/node_modules/@imgly/background-removal-node/package.json')
+  new URL('../../../node_modules/@imgly/background-removal-node/package.json', import.meta.url)
 );
 const sharp = imglyRequire('sharp');
 
