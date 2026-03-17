@@ -71,7 +71,6 @@ function renderCloset(filter = currentFilter) {
         class="item-card-img"
         src="${BACKEND_BASE}${item.imageUrl}"
         alt="${item.subcategory}"
-        loading="lazy"
       />
       <div class="item-card-body">
         <div class="item-card-sub">${item.subcategory || item.category}</div>
@@ -183,6 +182,7 @@ function openAddModal() {
   analyzeBtn.disabled = true;
   analyzingState.classList.remove('visible');
   modalActions.style.display = 'flex';
+  document.getElementById('uploadOptions').style.display = 'none';
   addModalOverlay.classList.add('open');
 }
 
@@ -197,26 +197,43 @@ function handleImageSelected(file) {
   uploadPreview.classList.add('visible');
   uploadPlaceholder.classList.add('hidden');
   uploadZone.classList.add('has-image');
+  document.getElementById('uploadOptions').style.display = 'block';
   analyzeBtn.disabled = false;
 }
 
 async function handleAnalyze() {
   if (!selectedFile) return;
 
-  // Show analyzing state
+  // Show loading state
   modalActions.style.display = 'none';
   analyzingState.classList.add('visible');
+  analyzingState.querySelector('p').textContent = 'Processing your image...';
 
   try {
-    const item = await api.uploadItem(selectedFile);
+    // Gather the pipeline toggle options from the UI
+    const options = {
+      removeBg: document.getElementById('optRemoveBg').checked,
+      useSegformer: document.getElementById('optSegformer').checked,
+      useI2I: document.getElementById('optI2I').checked,
+      useT2I: document.getElementById('optT2I').checked
+    };
+
+    // Upload raw file + options — backend handles background removal + AI analysis
+    const item = await api.uploadItem(selectedFile, options);
     await saveItemLocally(item);
     allItems.unshift(item);
-    renderCloset();
     closeAddModal();
+    // Reset to 'all' filter so the new item is always visible
+    currentFilter = 'all';
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('.filter-chip[data-filter="all"]')?.classList.add('active');
+    renderCloset('all');
     showToast(`✅ Added ${item.subcategory} to your closet!`, 'success');
   } catch (err) {
+    console.error('Analysis Error:', err);
     modalActions.style.display = 'flex';
     analyzingState.classList.remove('visible');
+    analyzingState.querySelector('p').textContent = 'AI is analyzing your item...';
     showToast(`❌ ${err.message}`, 'error');
   }
 }
@@ -253,6 +270,7 @@ async function openItemModal(itemId) {
 
       <div class="item-attrs">
         <div class="item-attr"><label>Color</label><span>${item.primaryColor}${item.secondaryColor ? ' / ' + item.secondaryColor : ''}</span></div>
+        <div class="item-attr"><label>Tone</label><span>${item.colorTone || '—'}</span></div>
         <div class="item-attr"><label>Style</label><span>${item.style}</span></div>
         <div class="item-attr"><label>Pattern</label><span>${item.pattern}</span></div>
         <div class="item-attr"><label>Material</label><span>${item.material || '—'}</span></div>

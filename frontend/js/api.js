@@ -3,9 +3,10 @@ const API_BASE = 'http://localhost:3001/api';
 
 const api = {
   // Upload a clothing image and get AI metadata back
-  async uploadItem(imageFile) {
+  async uploadItem(imageFile, options = {}) {
     const formData = new FormData();
     formData.append('image', imageFile);
+    formData.append('options', JSON.stringify(options));
 
     const res = await fetch(`${API_BASE}/items`, {
       method: 'POST',

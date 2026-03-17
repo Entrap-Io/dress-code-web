@@ -176,13 +176,256 @@
     "dateAdded": "2026-03-02T21:00:17.956Z"
   },
   {
-    "id": "530a59fa-61cf-4835-923d-7c8fb3eb9955",
-    "filename": "6fa34ee4-764b-4d66-ae6d-1952c7931c46.jpg",
-    "imageUrl": "/uploads/6fa34ee4-764b-4d66-ae6d-1952c7931c46.jpg",
+    "id": "a34b7247-1253-4ca0-8517-f841ddd274a5",
+    "filename": "5161c931-3d07-497f-97d9-c44cfa50ad67.png",
+    "imageUrl": "/uploads/5161c931-3d07-497f-97d9-c44cfa50ad67.png",
+    "category": "dress",
+    "subcategory": "maxi dress",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
+    "occasionTags": [
+      "dinner",
+      "party",
+      "date"
+    ],
+    "description": "A elegant burgundy satin maxi dress featuring a cowl neck, delicate spaghetti straps, and a high side slit.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-16T20:52:52.346Z"
+  },
+  {
+    "id": "1116334f-efb3-4485-bce3-71b0cf1d70b0",
+    "filename": "cd783d37-9407-4010-956f-05d583e7869b_clean.png",
+    "imageUrl": "/uploads/cd783d37-9407-4010-956f-05d583e7869b_clean.png",
+    "category": "dress",
+    "subcategory": "tiered midi dress",
+    "primaryColor": "black",
+    "secondaryColor": null,
+    "pattern": "solid",
+    "material": "synthetic",
+    "style": "bohemian",
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "occasionTags": [
+      "casual",
+      "date",
+      "outdoor",
+      "dinner"
+    ],
+    "description": "A black short-sleeved midi dress featuring a smocked bodice and a flowy tiered skirt.",
+    "fit": "loose",
+    "dateAdded": "2026-03-16T21:44:22.728Z"
+  },
+  {
+    "id": "f35c5b4c-bab8-419a-8837-c94adffd8cc2",
+    "filename": "aff53c09-7256-41ea-8a1c-d163c1abf976_clean.png",
+    "imageUrl": "/uploads/aff53c09-7256-41ea-8a1c-d163c1abf976_clean.png",
+    "category": "dress",
+    "subcategory": "cocktail dress",
+    "primaryColor": "red",
+    "secondaryColor": null,
+    "pattern": "floral",
+    "material": "tulle, sequined, embroidered",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "autumn"
+    ],
+    "occasionTags": [
+      "party",
+      "dinner",
+      "date"
+    ],
+    "description": "A vibrant red short cocktail dress featuring a fitted embellished bodice with a sweetheart neckline and a full, flared skirt with delicate embroidery.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-16T22:01:22.619Z"
+  },
+  {
+    "id": "cb2e8bd5-12da-4c94-9f3e-464137d89690",
+    "filename": "cc4cbce9-f9c9-4a06-9238-453daee2ee21_clean.png",
+    "imageUrl": "/uploads/cc4cbce9-f9c9-4a06-9238-453daee2ee21_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "evening gown",
+    "primaryColor": "sage green",
+    "secondaryColor": null,
+    "colorTone": "neutral",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "party",
+      "dinner",
+      "wedding"
+    ],
+    "description": "A sophisticated strapless evening gown in a lustrous sage green satin, featuring a structured sweetheart neckline bodice and a voluminous A-line skirt with subtle pleat detailing at the waist.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T02:33:36.071Z"
+  },
+  {
+    "id": "adc38f06-a85b-44a2-a274-947e0fcbae11",
+    "filename": "cb038630-2239-43b7-806d-1a5aaa410706_clean.png",
+    "imageUrl": "/uploads/cb038630-2239-43b7-806d-1a5aaa410706_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "wedding dress",
+    "primaryColor": "champagne",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "floral",
+    "material": "lace",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "wedding",
+      "formal"
+    ],
+    "description": "A stunning mermaid-style wedding dress featuring intricate floral lace appliqué, delicate spaghetti straps, and a plunging V-neckline with a sheer illusion panel.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T02:40:06.077Z"
+  },
+  {
+    "id": "b79bcdeb-ce11-4b90-930d-da49d8aaf615",
+    "filename": "b8ff5a10-0c11-4a10-9268-1a1bf9301882_clean.png",
+    "imageUrl": "/uploads/b8ff5a10-0c11-4a10-9268-1a1bf9301882_clean.png",
+    "hasHuman": true,
+    "category": "top",
+    "subcategory": "blouse",
+    "primaryColor": "light pink",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "floral",
+    "material": "polyester",
+    "style": "casual",
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "occasionTags": [
+      "casual",
+      "date",
+      "travel"
+    ],
+    "description": "A light pink short-sleeved blouse adorned with a vibrant floral pattern in shades of fuchsia, orange, and green, featuring delicate ruffled cap sleeves and a classic round neckline.",
+    "fit": "regular",
+    "dateAdded": "2026-03-17T02:47:58.809Z"
+  },
+  {
+    "id": "9b6967e7-57fb-4baa-b3c9-e7d2e942acfa",
+    "filename": "f22fb605-91fb-4cf2-b966-2608a58d3f99_clean.png",
+    "imageUrl": "/uploads/f22fb605-91fb-4cf2-b966-2608a58d3f99_clean.png",
+    "hasHuman": true,
+    "category": "bottom",
+    "subcategory": "flared pants",
+    "primaryColor": "black",
+    "secondaryColor": null,
+    "colorTone": "neutral",
+    "pattern": "solid",
+    "material": "stretch fabric blend",
+    "style": "smart-casual",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "casual",
+      "work",
+      "dinner",
+      "party",
+      "date",
+      "travel"
+    ],
+    "description": "High-waisted black flared trousers featuring subtle front ankle slits, offering a modern and sleek silhouette.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T03:17:03.478Z"
+  },
+  {
+    "id": "fcda4d37-09d1-4f08-a0cf-8a26d92daaeb",
+    "filename": "79ac4839-45ee-4e9f-8a5f-ed67ee0f7d74_clean.png",
+    "imageUrl": "/uploads/79ac4839-45ee-4e9f-8a5f-ed67ee0f7d74_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "cocktail dress",
+    "primaryColor": "rose gold",
+    "secondaryColor": "gold",
+    "colorTone": "warm",
+    "pattern": "floral",
+    "material": "tulle",
+    "style": "cocktail",
+    "season": [
+      "spring",
+      "summer"
+    ],
+    "occasionTags": [
+      "party",
+      "date",
+      "wedding"
+    ],
+    "description": "A rose gold mini cocktail dress featuring intricate floral embroidery, 3D appliques, and glitter detailing over a sheer tulle overlay with a fitted bustier bodice and a flared skirt.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T03:18:01.686Z"
+  },
+  {
+    "id": "34a4b40e-ee64-4ad5-ad8c-77aa55110d61",
+    "filename": "a06dee8e-6646-491e-9ab3-7c05e56e8406_clean.png",
+    "imageUrl": "/uploads/a06dee8e-6646-491e-9ab3-7c05e56e8406_clean.png",
+    "hasHuman": true,
+    "category": "suit",
+    "subcategory": "single-breasted suit",
+    "primaryColor": "black",
+    "secondaryColor": null,
+    "colorTone": "neutral",
+    "pattern": "solid",
+    "material": "wool",
+    "style": "formal",
+    "season": [
+      "spring",
+      "autumn",
+      "winter"
+    ],
+    "occasionTags": [
+      "work",
+      "wedding",
+      "dinner",
+      "party"
+    ],
+    "description": "A classic black single-breasted suit featuring notched lapels and matching tailored trousers for a sharp, timeless formal aesthetic.",
+    "fit": "slim",
+    "dateAdded": "2026-03-17T04:04:01.344Z"
+  },
+  {
+    "id": "62d45121-0b03-4464-8532-696a6f9f9ee9",
+    "filename": "60484065-171e-42ae-bb12-893a6b056ccd_clean.png",
+    "imageUrl": "/uploads/60484065-171e-42ae-bb12-893a6b056ccd_clean.png",
+    "hasHuman": false,
     "category": "outerwear",
     "subcategory": "leather jacket",
     "primaryColor": "black",
     "secondaryColor": null,
+    "colorTone": "cool",
     "pattern": "solid",
     "material": "leather",
     "style": "casual",
@@ -193,37 +436,96 @@
     ],
     "occasionTags": [
       "casual",
-      "dinner",
-      "party",
       "outdoor",
-      "date"
+      "date",
+      "travel"
     ],
-    "description": "A classic black leather jacket featuring a stand-up collar and prominent silver zippers on the front closure and pockets.",
+    "description": "A classic black leather moto-style jacket featuring a mandarin collar, prominent silver-toned zippers, and a supple, slightly textured finish.",
     "fit": "regular",
-    "dateAdded": "2026-03-02T21:01:33.838Z"
+    "dateAdded": "2026-03-17T04:37:40.998Z"
   },
   {
-    "id": "cdf262a2-08c2-4df9-9476-9f25b58205e1",
-    "filename": "e8dcbf11-290b-4aff-87f1-597add36f935.jpg",
-    "imageUrl": "/uploads/e8dcbf11-290b-4aff-87f1-597add36f935.jpg",
-    "category": "bottom",
-    "subcategory": "joggers",
-    "primaryColor": "coral",
-    "secondaryColor": null,
-    "pattern": "none",
-    "material": "cotton blend",
-    "style": "casual",
+    "id": "9ffa7070-db32-49b2-80c2-8af7f33660f0",
+    "filename": "0778c043-ec99-4f26-a388-142ab01bf60e_clean.png",
+    "imageUrl": "/uploads/0778c043-ec99-4f26-a388-142ab01bf60e_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "ball gown",
+    "primaryColor": "black",
+    "secondaryColor": "fuchsia",
+    "colorTone": "cool",
+    "pattern": "floral",
+    "material": "jacquard",
+    "style": "formal",
     "season": [
       "spring",
-      "autumn"
+      "summer",
+      "fall"
     ],
     "occasionTags": [
-      "casual",
-      "outdoor",
-      "sport"
+      "party",
+      "dinner",
+      "wedding"
     ],
-    "description": "A pair of coral-colored joggers with knee patches and ribbed cuffs, designed for comfort and active wear.",
-    "fit": "loose",
-    "dateAdded": "2026-03-03T12:34:29.829Z"
+    "description": "A stunning black strapless ball gown featuring a vibrant fuchsia floral jacquard pattern throughout its full, voluminous skirt, complete with practical side pockets.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T09:43:39.934Z"
+  },
+  {
+    "id": "fa75ee38-fe3b-4e25-8818-11be2c0f1278",
+    "filename": "38f56265-4479-4909-ba52-0760d419ae08_clean.png",
+    "imageUrl": "/uploads/38f56265-4479-4909-ba52-0760d419ae08_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "evening gown",
+    "primaryColor": "olive green",
+    "secondaryColor": null,
+    "colorTone": "neutral",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "dinner",
+      "party",
+      "wedding"
+    ],
+    "description": "A sophisticated, floor-length olive green satin strapless evening gown featuring a structured sweetheart neckline, a fitted bodice with prominent gathered details at the natural waist, and a voluminous A-line skirt.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T09:45:27.854Z"
+  },
+  {
+    "id": "29cd375e-f7c0-43e4-8073-be4f08d66aa8",
+    "filename": "87a00614-ea85-4a59-9d14-e9ef2bf467e2_clean.png",
+    "imageUrl": "/uploads/87a00614-ea85-4a59-9d14-e9ef2bf467e2_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "maxi dress",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "colorTone": "cool",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "occasionTags": [
+      "dinner",
+      "party",
+      "date",
+      "wedding",
+      "travel"
+    ],
+    "description": "An elegant burgundy satin maxi dress featuring a cowl neckline, delicate spaghetti straps, and a high side slit, designed for a sophisticated look.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T09:46:28.114Z"
   }
 ]

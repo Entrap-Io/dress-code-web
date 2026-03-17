@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DRESS•CODE</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
-  <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+    rel="stylesheet" />
+  <script src="https://unpkg.com/dexie/dist/dexie.js" defer></script>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
+
 <body>
 
   <!-- Header -->
@@ -65,12 +69,8 @@
 
     <div class="search-section">
       <div class="search-box">
-        <input
-          type="text"
-          id="searchInput"
-          class="search-input"
-          placeholder="e.g. smart casual for a Friday dinner..."
-        />
+        <input type="text" id="searchInput" class="search-input"
+          placeholder="e.g. smart casual for a Friday dinner..." />
         <button class="search-btn" id="searchBtn">Generate</button>
       </div>
       <div class="search-suggestions">
@@ -105,6 +105,39 @@
         <img class="upload-preview" id="uploadPreview" src="" alt="Preview" />
       </div>
 
+      <!-- Processing Options Toggles -->
+      <div class="upload-options" id="uploadOptions"
+        style="display: none; margin-top: 20px; text-align: left; padding: 0 10px;">
+        <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 14px; color: var(--text-muted);">Processing Pipeline
+          Options</h4>
+
+        <label
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;">
+          <span style="font-size: 14px;">1. Remove Background (imgly) <span
+              style="font-size: 12px; color: var(--accent);">[Default]</span></span>
+          <input type="checkbox" id="optRemoveBg" checked />
+        </label>
+
+        <label
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;">
+          <span style="font-size: 14px;">2. Try removing person (Segformer) <span
+              style="font-size: 12px; color: var(--accent);">[Default]</span></span>
+          <input type="checkbox" id="optSegformer" checked />
+        </label>
+
+        <label
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;">
+          <span style="font-size: 14px;">3. Image-to-Image Beautification (fal.ai)</span>
+          <input type="checkbox" id="optI2I" />
+        </label>
+
+        <label
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;">
+          <span style="font-size: 14px;">4. Text-to-Image Hallucination (Flux/SDK)</span>
+          <input type="checkbox" id="optT2I" />
+        </label>
+      </div>
+
       <div class="modal-actions">
         <button class="btn-secondary" id="cancelAddBtn">Cancel</button>
         <button class="btn-primary" id="analyzeBtn" disabled>✨ Analyze with AI</button>
@@ -130,8 +163,9 @@
   <!-- Toast notification -->
   <div class="toast" id="toast"></div>
 
-  <script src="js/db.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/db.js" defer></script>
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
 </body>
+
 </html>

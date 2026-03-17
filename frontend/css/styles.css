@@ -215,6 +215,18 @@ input { font-family: inherit; }
 .item-card:hover .item-card-delete { opacity: 1; }
 .item-card-delete:hover { background: var(--red); color: white; }
 
+.item-card-human-badge {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(4px);
+  border-radius: 100px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
 /* ─── EMPTY STATE ─────────────────────────────────────────────── */
 .empty-state {
   display: none;

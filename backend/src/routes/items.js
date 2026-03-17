@@ -3,13 +3,15 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { removeBackground } from '@imgly/background-removal-node';
 
 // Recreate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import { analyzeClothingImage } from '../services/gemini.js';
+import { analyzeClothingImage, generateProductImage, generateProductImageI2I } from '../services/gemini.js';
+import { isolateClothing, applyStudioMagic } from '../services/imageProcessing.js';
 
 const router = express.Router();
 
@@ -76,22 +78,158 @@ router.post('/', upload.single('image'), async (req, res) => {
     return res.status(400).json({ success: false, error: 'No image uploaded' });
   }
 
+  let bgRemovedPath = null;
+  let cleanPath = null;
+
   try {
-    console.log(`🔍 Analyzing image: ${req.file.filename}`);
+    const optsRaw = req.body.options;
+    const options = optsRaw ? JSON.parse(optsRaw) : { removeBg: true, useSegformer: true, useI2I: false, useT2I: false };
 
-    // Analyze with Gemini
-    const metadata = await analyzeClothingImage(req.file.path);
+    const baseName = path.basename(req.file.filename, path.extname(req.file.filename));
+    const cleanFilename = `${baseName}_clean.png`;
+    const bgRemovedFilename = `${baseName}_bgremoved.png`;
+    bgRemovedPath = path.join(UPLOADS_DIR, bgRemovedFilename);
 
-    // Build item record
+    // ── Step 1: Remove background (imgly) ────────────────────────
+    if (options.removeBg) {
+      console.log(`🖼️  Removing background: ${req.file.filename}`);
+      const fileUrl = pathToFileURL(req.file.path).toString();
+      const bgBlob = await removeBackground(fileUrl);
+      const bgBuffer = Buffer.from(await bgBlob.arrayBuffer());
+      fs.writeFileSync(bgRemovedPath, bgBuffer);
+    } else {
+      console.log(`🖼️  Skipping background removal (user disabled).`);
+      fs.copyFileSync(req.file.path, bgRemovedPath);
+    }
+
+    fs.unlinkSync(req.file.path); // delete original raw file
+
+    // ── Step 2: Gemini analyzes image ─────────────────
+    // Returns hasHuman + all clothing attributes in ONE call
+    console.log(`🔍 Analyzing with Gemini: ${bgRemovedFilename}`);
+    const metadata = await analyzeClothingImage(bgRemovedPath);
+    console.log(`👤 hasHuman: ${metadata.hasHuman} | ${metadata.subcategory} (${metadata.primaryColor})`);
+
+    // ── Step 3: Remove person (Segformer) ────────────────────────
+    cleanPath = path.join(UPLOADS_DIR, cleanFilename);
+    let isolatedPath = bgRemovedPath; // keep track of the most "cleaned" version
+    let maskPath = null;
+    let segformerSuccess = false;
+
+    // Only run Segformer if user enabled it AND if a person is actually present
+    if (options.useSegformer && metadata.hasHuman) {
+      try {
+        console.log('✂️  Running segformer to remove person from image...');
+        const { buffer: clothingBuffer, maskBuffer, method } = await isolateClothing(bgRemovedPath);
+        fs.writeFileSync(cleanPath, clothingBuffer); // temporarily save choppy image
+        
+        if (maskBuffer) {
+          maskPath = path.join(UPLOADS_DIR, `${baseName}_mask.png`);
+          fs.writeFileSync(maskPath, maskBuffer);
+        }
+
+        isolatedPath = cleanPath; // the choppy image is now our best physical version
+        segformerSuccess = true;
+        console.log(`✅ Person removed via [${method}]`);
+      } catch (hfErr) {
+        console.warn(`⚠️  Segformer failed: ${hfErr.message}`);
+        // keep isolatedPath as bgRemovedPath
+      }
+    } else if (!options.useSegformer && metadata.hasHuman) {
+      console.log('✂️  Skipping Segformer (user disabled).');
+    }
+
+    // ── Step 4: AI Generations (T2I or I2I) ──────────────────────
+    let aiSuccess = false;
+
+    if (options.useI2I || options.useT2I) {
+      try {
+        let aiResult = null;
+
+        if (options.useI2I) {
+          console.log('🎨 Generating Image-to-Image (healing borders & lighting) via fal.ai...');
+          const currentBuffer = fs.readFileSync(isolatedPath);
+          const currentMaskBuffer = maskPath ? fs.readFileSync(maskPath) : null;
+          aiResult = await generateProductImageI2I(metadata, currentBuffer, currentMaskBuffer);
+        } else if (options.useT2I) {
+          console.log('🎨 Generating Text-to-Image (hallucination) via API...');
+          aiResult = await generateProductImage(metadata);
+        }
+
+        if (aiResult?.imageBuffer) {
+          // Temporarily save the AI image with the solid white background
+          fs.writeFileSync(cleanPath, aiResult.imageBuffer);
+
+          try {
+            // ALWAYS run AI generation output through imgly to strip the white studio floor
+            console.log(`🧼 Removing background from AI generated image...`);
+            const aiImgUrl = pathToFileURL(cleanPath).toString();
+            const cleanBlob = await removeBackground(aiImgUrl);
+            const cleanBuffer = Buffer.from(await cleanBlob.arrayBuffer());
+            fs.writeFileSync(cleanPath, cleanBuffer); // Overwrite with transparent version
+            console.log(`✅ Final transparent image ready via [${aiResult.model}]`);
+          } catch (bgErr) {
+            console.warn(`⚠️  Background removal on AI image failed, keeping solid background: ${bgErr.message}`);
+          }
+
+          if (isolatedPath === bgRemovedPath) fs.unlinkSync(bgRemovedPath);
+          else if (bgRemovedPath && fs.existsSync(bgRemovedPath)) fs.unlinkSync(bgRemovedPath);
+
+          if (maskPath && fs.existsSync(maskPath)) fs.unlinkSync(maskPath);
+
+          isolatedPath = cleanPath;
+          aiSuccess = true;
+        }
+      } catch (aiErr) {
+        console.warn(`⚠️  AI Generation failed: ${aiErr.message}`);
+      }
+    }
+
+    // ── Step 5: Local Studio Magic (Only if AI was skipped or failed) ────
+    if (!aiSuccess) {
+      // If we don't have AI giving us a pro studio background, we run our Local Studio Magic 
+      // EXCEPT when the user explicitly turned off imgly background removal (because then it's just a raw photo block)
+      if (options.removeBg) {
+        console.log(`✨ Applying Local Studio Magic (Auto-crop, 4:5 padding, Drop Shadow)...`);
+        try {
+          const magicBuffer = await applyStudioMagic(isolatedPath);
+          fs.writeFileSync(cleanPath, magicBuffer);
+
+          if (isolatedPath === bgRemovedPath && fs.existsSync(bgRemovedPath)) {
+            fs.unlinkSync(bgRemovedPath);
+          }
+          console.log(`✅ Local Studio Magic applied successfully.`);
+        } catch (magicErr) {
+          console.warn(`⚠️  Studio Magic failed: ${magicErr.message}`);
+          // Fallbacks:
+          if (isolatedPath === bgRemovedPath) {
+            console.log(`🪆 Using raw (bg-removed) image as fallback`);
+            fs.renameSync(bgRemovedPath, cleanPath);
+          } else {
+            console.log(`🪆 Using physical chopped image as fallback`);
+            if (fs.existsSync(bgRemovedPath)) fs.unlinkSync(bgRemovedPath);
+          }
+        }
+      } else {
+        // Did not remove background, use as is
+        fs.renameSync(bgRemovedPath, cleanPath);
+      }
+    }
+
+    // Explicitly nullify
+    bgRemovedPath = null;
+    if (maskPath && fs.existsSync(maskPath)) fs.unlinkSync(maskPath);
+    maskPath = null;
+
+    // ── Step 4: Save item record ──────────────────────────────────
     const newItem = {
       id: uuidv4(),
-      filename: req.file.filename,
-      imageUrl: `/uploads/${req.file.filename}`,
+      filename: cleanFilename,
+      imageUrl: `/uploads/${cleanFilename}`,
       ...metadata,
       dateAdded: new Date().toISOString(),
     };
 
-    // Save to items.json
     const items = readItems();
     items.push(newItem);
     writeItems(items);
@@ -99,11 +237,10 @@ router.post('/', upload.single('image'), async (req, res) => {
     console.log(`✅ Item saved: ${newItem.subcategory} (${newItem.primaryColor})`);
     res.json({ success: true, item: newItem });
   } catch (err) {
-    // Clean up uploaded file if analysis failed
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    console.error('❌ Error analyzing item:', err.message);
+    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (bgRemovedPath && fs.existsSync(bgRemovedPath)) fs.unlinkSync(bgRemovedPath);
+    if (cleanPath && fs.existsSync(cleanPath)) fs.unlinkSync(cleanPath);
+    console.error('❌ Error processing item:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
