@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
-import { getTextChain, getImageChain } from '../config/models.js';
+import { getTextChain, getT2IChain, getI2IChain, getDirectAiChain } from '../config/models.js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -120,7 +120,7 @@ Field definitions:
  * @param {object} metadata - Gemini's clothing analysis result
  * @returns {{ imageBuffer: Buffer, model: string } | null}
  */
-export async function generateProductImage(metadata) {
+export async function generateProductImage(metadata, modelChoice = null) {
   const { subcategory, primaryColor, secondaryColor, material, pattern, fit, style, description } = metadata;
 
   const colorDesc = secondaryColor
@@ -149,7 +149,21 @@ ${`RAW GARMENT METADATA JSON SCHEMA TO REPLICATE:\n` + JSON.stringify((() => {
   return m;
 })(), null, 2)}`;
 
-  const chain = getImageChain();
+  let chain = getT2IChain();
+  if (modelChoice) {
+    // Map the dropdown ID back to the real model ID if necessary
+    const mappedId = modelChoice === 'flux' ? 'black-forest-labs/FLUX.1-schnell' :
+                     modelChoice === 'nanobana-basic' ? 'gemini-2.5-flash-image' :
+                     modelChoice === 'nanobana-pro' ? 'gemini-3-pro-image-preview' :
+                     modelChoice === 'imagen-fast' ? 'imagen-4.0-fast-generate-001' :
+                     modelChoice === 'imagen-standard' ? 'imagen-4.0-generate-001' :
+                     modelChoice === 'imagen-ultra' ? 'imagen-4.0-ultra-generate-001' : modelChoice;
+
+    const preferred = chain.find(m => m.id === mappedId);
+    if (preferred) {
+      chain = [preferred, ...chain.filter(m => m.id !== mappedId)];
+    }
+  }
 
   return callWithFallback(chain, async (model) => {
     console.log(`   using image model: ${model.id} (${model.provider})`);
@@ -200,26 +214,49 @@ ${`RAW GARMENT METADATA JSON SCHEMA TO REPLICATE:\n` + JSON.stringify((() => {
       const arrayBuffer = await response.arrayBuffer();
       return { imageBuffer: Buffer.from(arrayBuffer), model: model.id };
     }
-    // ── Google Provider (Imagen) ─────────────────────
+    // ── Google Provider (Imagen / Nanobana) ─────────────────────
     else {
-      const response = await ai.models.generateImages({
-        model: model.id,
-        prompt,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/png',
-        },
-      });
+      // Nanobana family (gemini-) uses generateContent to produce images
+      if (model.id.startsWith('gemini-')) {
+        const response = await ai.models.generateContent({
+          model: model.id,
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+        });
 
-      if (!response.generatedImages?.length) {
-        throw new Error('Imagen returned no images');
+        // Find the image part in the interleaved response
+        const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (!imagePart) {
+          throw new Error('Nanobana returned no image part');
+        }
+
+        return {
+          imageBuffer: Buffer.from(imagePart.inlineData.data, 'base64'),
+          model: model.id,
+        };
+      } 
+      // Traditional Imagen family (imagen-) uses generateImages
+      else {
+        const response = await ai.models.generateImages({
+          model: model.id,
+          prompt,
+          config: {
+            numberOfImages: 1,
+            outputMimeType: 'image/png',
+          },
+        });
+
+        if (!response.generatedImages?.length) {
+          throw new Error('Imagen returned no images');
+        }
+
+        const base64 = response.generatedImages[0].image.imageBytes;
+        return {
+          imageBuffer: Buffer.from(base64, 'base64'),
+          model: model.id,
+        };
       }
-
-      const base64 = response.generatedImages[0].image.imageBytes;
-      return {
-        imageBuffer: Buffer.from(base64, 'base64'),
-        model: model.id,
-      };
     }
   }, 'ImageGen');
 }
@@ -318,7 +355,109 @@ ${`RAW GARMENT METADATA JSON SCHEMA TO REPLICATE:\n` + JSON.stringify((() => {
   const imgResponse = await fetch(imageUrl);
   const finalBuffer = await imgResponse.arrayBuffer();
 
-  return { imageBuffer: Buffer.from(finalBuffer), model: 'fal-ai/flux/dev (I2I)' };
+  return { imageBuffer: Buffer.from(finalBuffer), model: 'Fal.ai (Flux Dev)' };
+}
+
+/**
+ * Takes the ORIGINAL uncleaned image and asks AI to do everything:
+ * Remove background, remove person, isolate garment, heal gaps.
+ */
+export async function generateProductImageDirect(metadata, imageBuffer, modelChoice = 'nanobana-basic') {
+  const isNanobana = modelChoice === 'nanobana-pro' || modelChoice === 'nanobana-basic';
+  
+  if (!isNanobana && !process.env.FAL_KEY) {
+    throw new Error('FAL_KEY not set in .env (required for Flux)');
+  }
+  if (isNanobana && !process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY not set in .env (required for Nanobana)');
+  }
+
+  const { subcategory, primaryColor, secondaryColor, material, pattern, fit, style, description } = metadata;
+  const colorDesc = secondaryColor ? `${primaryColor} with ${secondaryColor} accents` : primaryColor;
+
+  const prompt = `STUDIO DIRECTIVE: REPLACE EVERYTHING EXCEPT GARMENT SHAPE.
+Transform this messy amateur photo into a professional, high-end e-commerce product photograph.
+
+GARMENT TO GENERATE:
+A single ${subcategory} in precise ${colorDesc}. Style is ${style} with ${material} texture.
+
+MANDATORY RULES:
+1. COMPLETELY REMOVE the person, their skin, their hair, and their limbs.
+2. COMPLETELY REMOVE the original background.
+3. ISOLATION: The garment must be the ONLY item in the frame, centered on a PURE #FFFFFF SOLID WHITE BACKGROUND.
+4. VIEW: Bird's-eye view, perfectly flat-lay or ghost mannequin style.
+5. QUALITY: Ultra-high resolution fabric textures, professional studio flash lighting, neutral shadows.
+
+EXCLUSIONS: NO HUMANS, NO MANNEQUINS, NO HANDS, NO FEET, NO SKIN, NO FACE, NO CLUTTER.
+EXECUTION: You must strictly overwrite any human body parts with the background or more fabric. Only the garment remains.
+FINAL DIRECTIVE: The resulting image must be an EMPTY white studio containing ONLY the garment. No exceptions.`;
+
+  const b64 = `data:image/png;base64,${imageBuffer.toString('base64')}`;
+
+  let response;
+  let modelNameUsed;
+
+  if (isNanobana) {
+    const modelId = modelChoice === 'nanobana-pro' ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+    const variantLabel = modelChoice === 'nanobana-pro' ? 'Pro' : 'Basic';
+    console.log(`   using image model: ${modelId} (Nanobana ${variantLabel} via AI Studio)`);
+    
+    const resp = await ai.models.generateContent({
+      model: modelId,
+      contents: [{
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/png',
+              data: imageBuffer.toString('base64')
+            }
+          },
+          { text: prompt }
+        ]
+      }],
+    });
+
+    const imagePart = resp.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+    if (!imagePart) {
+      throw new Error(`Nanobana ${variantLabel} returned no image part`);
+    }
+
+    return {
+      imageBuffer: Buffer.from(imagePart.inlineData.data, 'base64'),
+      model: `${modelId} (Direct)`
+    };
+  } else {
+    console.log(`   using image model: Fal.ai (Flux Dev Direct)`);
+    modelNameUsed = 'Fal.ai (Flux Dev)';
+    response = await fetch('https://fal.run/fal-ai/flux/dev/image-to-image', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Key ${process.env.FAL_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image_url: b64,
+        prompt,
+        strength: 0.95, 
+        num_inference_steps: 40,
+        guidance_scale: 7.5
+      })
+    });
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Fal.ai API error ${response.status}: ${text}`);
+  }
+
+  const result = await response.json();
+  if (!result.images || result.images.length === 0) throw new Error('Fal.ai returned no images');
+
+  const imageUrl = result.images[0].url;
+  const imgResponse = await fetch(imageUrl);
+  const finalBuffer = await imgResponse.arrayBuffer();
+
+  return { imageBuffer: Buffer.from(finalBuffer), model: 'Fal.ai (Flux Dev)' };
 }
 
 // ── Outfit Recommendations ──────────────────────────────────────

@@ -10,7 +10,7 @@ import { removeBackground } from '@imgly/background-removal-node';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import { analyzeClothingImage, generateProductImage, generateProductImageI2I } from '../services/gemini.js';
+import { analyzeClothingImage, generateProductImage, generateProductImageI2I, generateProductImageDirect } from '../services/gemini.js';
 import { isolateClothing, applyStudioMagic } from '../services/imageProcessing.js';
 
 const router = express.Router();
@@ -80,6 +80,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 
   let bgRemovedPath = null;
   let cleanPath = null;
+  let originalPath = null;
 
   try {
     const optsRaw = req.body.options;
@@ -90,8 +91,13 @@ router.post('/', upload.single('image'), async (req, res) => {
     const bgRemovedFilename = `${baseName}_bgremoved.png`;
     bgRemovedPath = path.join(UPLOADS_DIR, bgRemovedFilename);
 
+    originalPath = path.join(UPLOADS_DIR, `${baseName}_original${path.extname(req.file.filename)}`);
+    if (options.useDirectAI) {
+      fs.copyFileSync(req.file.path, originalPath);
+    }
+
     // ── Step 1: Remove background (imgly) ────────────────────────
-    if (options.removeBg) {
+    if (options.removeBg || options.useDirectAI) {
       console.log(`🖼️  Removing background: ${req.file.filename}`);
       const fileUrl = pathToFileURL(req.file.path).toString();
       const bgBlob = await removeBackground(fileUrl);
@@ -102,13 +108,14 @@ router.post('/', upload.single('image'), async (req, res) => {
       fs.copyFileSync(req.file.path, bgRemovedPath);
     }
 
-    fs.unlinkSync(req.file.path); // delete original raw file
-
     // ── Step 2: Gemini analyzes image ─────────────────
     // Returns hasHuman + all clothing attributes in ONE call
     console.log(`🔍 Analyzing with Gemini: ${bgRemovedFilename}`);
     const metadata = await analyzeClothingImage(bgRemovedPath);
     console.log(`👤 hasHuman: ${metadata.hasHuman} | ${metadata.subcategory} (${metadata.primaryColor})`);
+
+    // Only delete original raw file after we might have copied it for Direct AI
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
     // ── Step 3: Remove person (Segformer) ────────────────────────
     cleanPath = path.join(UPLOADS_DIR, cleanFilename);
@@ -116,7 +123,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     let maskPath = null;
     let segformerSuccess = false;
 
-    // Only run Segformer if user enabled it AND if a person is actually present
+    // ── Step 3: Remove person (Segformer) ────────────────────────
     if (options.useSegformer && metadata.hasHuman) {
       try {
         console.log('✂️  Running segformer to remove person from image...');
@@ -139,21 +146,29 @@ router.post('/', upload.single('image'), async (req, res) => {
       console.log('✂️  Skipping Segformer (user disabled).');
     }
 
-    // ── Step 4: AI Generations (T2I or I2I) ──────────────────────
+    // ── Step 4: AI Generations (Direct, T2I, or I2I) ──────────────
     let aiSuccess = false;
 
-    if (options.useI2I || options.useT2I) {
+    if (options.useDirectAI || options.useI2I || options.useT2I) {
       try {
         let aiResult = null;
 
-        if (options.useI2I) {
+        if (options.useDirectAI) {
+          const directModel = options.directModel || 'nanobana-basic';
+          const fileSource = options.useSegformer && metadata.hasHuman ? 'LOCAL SEGFORMER CUTOUT' : 'CLEANED BACKGROUND';
+          console.log(`🎨 Generating Direct AI Transformation via AI Studio [${directModel}] using ${fileSource}...`);
+          const inputBuffer = fs.readFileSync(isolatedPath); 
+          aiResult = await generateProductImageDirect(metadata, inputBuffer, directModel);
+          if (fs.existsSync(originalPath)) fs.unlinkSync(originalPath);
+        } else if (options.useI2I) {
           console.log('🎨 Generating Image-to-Image (healing borders & lighting) via fal.ai...');
           const currentBuffer = fs.readFileSync(isolatedPath);
           const currentMaskBuffer = maskPath ? fs.readFileSync(maskPath) : null;
-          aiResult = await generateProductImageI2I(metadata, currentBuffer, currentMaskBuffer);
+          aiResult = await generateProductImageI2I(metadata, currentBuffer, currentMaskBuffer)
         } else if (options.useT2I) {
-          console.log('🎨 Generating Text-to-Image (hallucination) via API...');
-          aiResult = await generateProductImage(metadata);
+          const t2iModel = options.t2iModel || 'nanobana-basic';
+          console.log(`🎨 Generating Text-to-Image via [${t2iModel}]...`);
+          aiResult = await generateProductImage(metadata, t2iModel);
         }
 
         if (aiResult?.imageBuffer) {
@@ -240,6 +255,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     if (bgRemovedPath && fs.existsSync(bgRemovedPath)) fs.unlinkSync(bgRemovedPath);
     if (cleanPath && fs.existsSync(cleanPath)) fs.unlinkSync(cleanPath);
+    if (originalPath && fs.existsSync(originalPath)) fs.unlinkSync(originalPath);
     console.error('❌ Error processing item:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }

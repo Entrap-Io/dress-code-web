@@ -527,5 +527,285 @@
     "description": "An elegant burgundy satin maxi dress featuring a cowl neckline, delicate spaghetti straps, and a high side slit, designed for a sophisticated look.",
     "fit": "fitted",
     "dateAdded": "2026-03-17T09:46:28.114Z"
+  },
+  {
+    "id": "9f979f4d-d9b5-4685-a0d4-0ed360d84a7a",
+    "filename": "d9f27e7a-d27d-447d-84d4-71575527c755_clean.png",
+    "imageUrl": "/uploads/d9f27e7a-d27d-447d-84d4-71575527c755_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "maxi dress",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "elegant",
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "occasionTags": [
+      "party",
+      "dinner",
+      "date",
+      "wedding"
+    ],
+    "description": "An elegant burgundy satin maxi dress featuring a draped cowl neckline, delicate tie-up spaghetti straps, and a dramatic high side slit that accentuates its flowing silhouette.",
+    "fit": "regular",
+    "dateAdded": "2026-03-17T12:53:21.983Z"
+  },
+  {
+    "id": "8a0c264f-dca3-4cb2-8180-210204a7763e",
+    "filename": "e378741b-4cff-4abd-9306-a42abf370c18_clean.png",
+    "imageUrl": "/uploads/e378741b-4cff-4abd-9306-a42abf370c18_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "maxi dress",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "occasionTags": [
+      "dinner",
+      "party",
+      "date",
+      "wedding"
+    ],
+    "description": "A floor-length burgundy satin maxi dress featuring a draped cowl neckline, delicate tie-up spaghetti straps, a fitted waist, and a dramatic high side slit that allows for elegant movement.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T13:13:39.534Z"
+  },
+  {
+    "id": "6f1560fb-8953-40fa-95b9-dffd1cb0828c",
+    "filename": "e0e9b769-c6ca-4c29-a8bf-41f07491753d_clean.png",
+    "imageUrl": "/uploads/e0e9b769-c6ca-4c29-a8bf-41f07491753d_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "cocktail dress",
+    "primaryColor": "red",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "embroidered",
+    "material": "tulle",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "occasionTags": [
+      "party",
+      "wedding",
+      "date",
+      "dinner"
+    ],
+    "description": "A vibrant red cocktail dress featuring a sweetheart neckline, an intricately embroidered and beaded bodice, and a voluminous, shimmering tulle skirt.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T13:15:07.822Z"
+  },
+  {
+    "id": "5c92da09-a051-4c84-92dd-ec4b396232c6",
+    "filename": "51d688c1-f98b-434f-b360-4e6581df6045_clean.png",
+    "imageUrl": "/uploads/51d688c1-f98b-434f-b360-4e6581df6045_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "wedding dress",
+    "primaryColor": "champagne",
+    "secondaryColor": "ivory",
+    "colorTone": "warm",
+    "pattern": "floral",
+    "material": "lace",
+    "style": "romantic",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "wedding",
+      "formal",
+      "party"
+    ],
+    "description": "A stunning mermaid wedding gown featuring delicate spaghetti straps, a plunging illusion V-neckline, and an intricate ivory floral and baroque lace overlay on a champagne-toned lining.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T13:18:35.429Z"
+  },
+  {
+    "id": "e9677a30-d490-477b-a084-0a6c74170869",
+    "filename": "1e816373-8115-454f-8e76-a1e3e1a78726_clean.png",
+    "imageUrl": "/uploads/1e816373-8115-454f-8e76-a1e3e1a78726_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "maxi dress",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "colorTone": "cool",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "elegant",
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "occasionTags": [
+      "party",
+      "dinner",
+      "date",
+      "wedding"
+    ],
+    "description": "An elegant, floor-length burgundy satin maxi dress featuring a chic cowl neck, delicate tie-up spaghetti straps, and a daring high side slit, creating a sophisticated and flowy silhouette.",
+    "fit": "regular",
+    "dateAdded": "2026-03-17T13:26:21.783Z"
+  },
+  {
+    "id": "15d1090d-6c54-40aa-9d98-aa4ffe85cf23",
+    "filename": "187e2f41-b865-4890-890d-a78cb3fc5373_clean.png",
+    "imageUrl": "/uploads/187e2f41-b865-4890-890d-a78cb3fc5373_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "cocktail dress",
+    "primaryColor": "red",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "floral",
+    "material": "tulle",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "party",
+      "date",
+      "dinner",
+      "wedding"
+    ],
+    "description": "A vibrant red short cocktail dress featuring a deeply V-neck, fitted bodice intricately embellished with tone-on-tone floral embroidery and sequins, and a flared, shimmering tulle skirt.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T13:29:12.565Z"
+  },
+  {
+    "id": "68a7713f-e6f1-43a5-8f21-cfb559569b78",
+    "filename": "622079f2-c1c4-498d-8eea-b8248596e724_clean.png",
+    "imageUrl": "/uploads/622079f2-c1c4-498d-8eea-b8248596e724_clean.png",
+    "hasHuman": false,
+    "category": "bottom",
+    "subcategory": "joggers",
+    "primaryColor": "coral pink",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "solid",
+    "material": "cotton jersey",
+    "style": "casual",
+    "season": [
+      "spring",
+      "autumn",
+      "winter"
+    ],
+    "occasionTags": [
+      "casual",
+      "outdoor"
+    ],
+    "description": "A pair of coral pink children's joggers featuring a high elastic waistband, reinforced oval knee patches, and ribbed cuffs for comfortable all-day play.",
+    "fit": "regular",
+    "dateAdded": "2026-03-17T13:41:34.608Z"
+  },
+  {
+    "id": "731aa225-8324-4634-801f-ffd8fb338829",
+    "filename": "7fed03c9-72c7-469d-8631-a71821b31189_clean.png",
+    "imageUrl": "/uploads/7fed03c9-72c7-469d-8631-a71821b31189_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "gown",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "party",
+      "wedding",
+      "date"
+    ],
+    "description": "An elegant floor-length burgundy gown crafted from shimmering satin, featuring a draped cowl neckline, delicate self-tie shoulder straps, and a daring high-thigh slit.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T14:18:52.181Z"
+  },
+  {
+    "id": "92fedf03-c1a1-4d22-9107-31882d086029",
+    "filename": "cb2f565f-ec65-4da9-b902-9871bef48238_clean.png",
+    "imageUrl": "/uploads/cb2f565f-ec65-4da9-b902-9871bef48238_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "evening gown",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "occasionTags": [
+      "formal",
+      "party",
+      "wedding",
+      "date"
+    ],
+    "description": "A lustrous burgundy satin evening gown with a cowl neckline, adjustable tie straps, and a bold high-leg slit for a sophisticated look.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T14:20:20.414Z"
+  },
+  {
+    "id": "c83e844a-db78-469e-942d-0a062853ab1d",
+    "filename": "913e3b55-417a-4efa-801b-033b239df42e_clean.png",
+    "imageUrl": "/uploads/913e3b55-417a-4efa-801b-033b239df42e_clean.png",
+    "hasHuman": true,
+    "category": "dress",
+    "subcategory": "maxi dress",
+    "primaryColor": "burgundy",
+    "secondaryColor": null,
+    "colorTone": "warm",
+    "pattern": "solid",
+    "material": "satin",
+    "style": "formal",
+    "season": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "occasionTags": [
+      "dinner",
+      "party",
+      "date",
+      "wedding"
+    ],
+    "description": "A luxurious burgundy satin maxi dress featuring a draped cowl neckline, delicate spaghetti straps, and a dramatic thigh-high slit, creating an elegant and alluring silhouette.",
+    "fit": "fitted",
+    "dateAdded": "2026-03-17T14:25:01.745Z"
   }
 ]

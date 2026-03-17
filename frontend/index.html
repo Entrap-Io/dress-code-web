@@ -133,9 +133,36 @@
 
         <label
           style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer;">
-          <span style="font-size: 14px;">4. Text-to-Image Hallucination (Flux/SDK)</span>
+          <span style="font-size: 14px;">4. Text-to-Image Hallucination (Hallucinate)</span>
           <input type="checkbox" id="optT2I" />
         </label>
+
+        <div id="t2iModelContainer" style="margin-bottom: 12px; display: none; padding-left: 4px;">
+          <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Model Choice:</label>
+          <select id="optT2IModel" style="width: 100%; background: var(--bg-body); color: var(--text-main); border: 1px solid var(--border-light); padding: 4px; border-radius: 4px; font-size: 12px;">
+            <option value="nanobana-pro">Nanobana Pro (Professional Fashion)</option>
+            <option value="nanobana-basic" selected>Nanobana (Gemini 2.5 Flash Preview Image)</option>
+            <option value="flux">Flux Schnell (Realistic & Fast)</option>
+            <option value="imagen-fast">Imagen 4 Fast (High Speed)</option>
+            <option value="imagen-standard">Imagen 4 Standard (Balanced Quality)</option>
+            <option value="imagen-ultra">Imagen 4 Ultra (Deep Detail)</option>
+          </select>
+        </div>
+
+        <label
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; border-top: 1px solid var(--border-light); padding-top: 12px; margin-top: 4px;">
+          <span style="font-size: 14px; color: var(--accent);">5. Direct AI Transformation (Original Image)</span>
+          <input type="checkbox" id="optDirectAI" />
+        </label>
+
+        <div id="directAiModelContainer" style="margin-bottom: 12px; display: none; padding-left: 4px;">
+          <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Model Choice:</label>
+          <select id="optDirectModel" style="width: 100%; background: var(--bg-body); color: var(--text-main); border: 1px solid var(--border-light); padding: 4px; border-radius: 4px; font-size: 12px;">
+            <option value="nanobana-pro">Nanobana Pro (Professional Fashion)</option>
+            <option value="nanobana-basic" selected>Nanobana (Gemini 2.5 Flash Preview Image)</option>
+            <option value="flux">Fal.ai (Flux Dev - Aggressive Transformation)</option>
+          </select>
+        </div>
       </div>
 
       <div class="modal-actions">

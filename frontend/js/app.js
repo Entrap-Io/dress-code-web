@@ -138,6 +138,44 @@ function setupEventListeners() {
   // Analyze button
   analyzeBtn.addEventListener('click', handleAnalyze);
 
+  // Mutual Exclusivity and Visibility for Options 3, 4, 5
+  const optI2I = document.getElementById('optI2I');
+  const optT2I = document.getElementById('optT2I');
+  const optDirectAI = document.getElementById('optDirectAI');
+  const t2iContainer = document.getElementById('t2iModelContainer');
+  const directContainer = document.getElementById('directAiModelContainer');
+
+  optI2I.addEventListener('change', () => {
+    if (optI2I.checked) {
+      optT2I.checked = false;
+      optDirectAI.checked = false;
+      t2iContainer.style.display = 'none';
+      directContainer.style.display = 'none';
+    }
+  });
+
+  optT2I.addEventListener('change', () => {
+    if (optT2I.checked) {
+      optI2I.checked = false;
+      optDirectAI.checked = false;
+      t2iContainer.style.display = 'block';
+      directContainer.style.display = 'none';
+    } else {
+      t2iContainer.style.display = 'none';
+    }
+  });
+
+  optDirectAI.addEventListener('change', () => {
+    if (optDirectAI.checked) {
+      optI2I.checked = false;
+      optT2I.checked = false;
+      t2iContainer.style.display = 'none';
+      directContainer.style.display = 'block';
+    } else {
+      directContainer.style.display = 'none';
+    }
+  });
+
   // Closet grid — delegate clicks for card open and delete
   closetGrid.addEventListener('click', e => {
     const deleteBtn = e.target.closest('[data-delete]');
@@ -215,7 +253,10 @@ async function handleAnalyze() {
       removeBg: document.getElementById('optRemoveBg').checked,
       useSegformer: document.getElementById('optSegformer').checked,
       useI2I: document.getElementById('optI2I').checked,
-      useT2I: document.getElementById('optT2I').checked
+      useT2I: document.getElementById('optT2I').checked,
+      t2iModel: document.getElementById('optT2IModel').value,
+      useDirectAI: document.getElementById('optDirectAI').checked,
+      directModel: document.getElementById('optDirectModel').value
     };
 
     // Upload raw file + options — backend handles background removal + AI analysis
