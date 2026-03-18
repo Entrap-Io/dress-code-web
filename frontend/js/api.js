@@ -71,5 +71,52 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemIds, stylingMode, weather: weatherContext }),
     });
+  },
+
+  // Update item status (closet vs laundry)
+  async updateItemStatus(itemId, status) {
+    const data = await this._fetch(`${API_BASE}/items/${itemId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    return data.item;
+  },
+
+  // Record a wear event
+  async markItemWorn(itemId, date = null) {
+    const data = await this._fetch(`${API_BASE}/items/${itemId}/worn`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date }),
+    });
+    return data.item;
+  },
+
+  // Bulk wash action
+  async washAllLaundry() {
+    return await this._fetch(`${API_BASE}/items/wash-all`, {
+      method: 'POST',
+    });
+  },
+
+  // Get advanced analytics
+  async getAnalytics() {
+    return await this._fetch(`${API_BASE}/analytics`);
+  },
+
+  // Profile management
+  async getProfile() {
+    const data = await this._fetch(`${API_BASE}/profile`);
+    return data.profile;
+  },
+
+  async updateProfile(profile) {
+    const data = await this._fetch(`${API_BASE}/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+    return data.profile;
   }
 };

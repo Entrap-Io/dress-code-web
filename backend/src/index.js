@@ -16,6 +16,8 @@ const __dirname = path.dirname(__filename);
 
 import itemsRouter from './routes/items.js';
 import recommendRouter from './routes/recommend.js';
+import analyticsRouter from './routes/analytics.js';
+import profileRouter from './routes/profile.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -57,6 +59,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/items', itemsRouter);
 app.use('/api/recommend', recommendRouter);
 app.use('/api/search', recommendRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/profile', profileRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

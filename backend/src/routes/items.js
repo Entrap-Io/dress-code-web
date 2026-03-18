@@ -256,6 +256,9 @@ router.post('/', upload.single('image'), async (req, res) => {
       ...metadata,
       styleVector,
       dateAdded: new Date().toISOString(),
+      status: 'closet',
+      wornHistory: [],
+      lastWorn: null
     };
 
     const items = readItems();
@@ -291,6 +294,84 @@ router.delete('/:id', (req, res) => {
     writeItems(updated);
 
     res.json({ success: true, message: 'Item deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/items/:id/status — toggle between closet and laundry
+router.put('/:id/status', (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['closet', 'laundry', 'winter-store', 'summer-store'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, error: 'Invalid status' });
+    }
+
+    const items = readItems();
+    const index = items.findIndex(i => i.id === req.params.id);
+    if (index === -1) return res.status(404).json({ success: false, error: 'Item not found' });
+
+    items[index].status = status;
+    writeItems(items);
+
+    res.json({ success: true, item: items[index] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/items/:id/worn — record a wear event
+router.post('/:id/worn', (req, res) => {
+  try {
+    const { date } = req.body;
+    const wearDate = date ? new Date(date).toISOString() : new Date().toISOString();
+
+    const items = readItems();
+    const index = items.findIndex(i => i.id === req.params.id);
+    if (index === -1) return res.status(404).json({ success: false, error: 'Item not found' });
+
+    if (!items[index].wornHistory) items[index].wornHistory = [];
+    
+    // Check if worn today (same UTC day)
+    const today = new Date().toISOString().split('T')[0];
+    const existingIndex = items[index].wornHistory.findIndex(d => d.split('T')[0] === today);
+
+    if (existingIndex !== -1) {
+      // Toggle off: remove today's entry
+      items[index].wornHistory.splice(existingIndex, 1);
+      // Update lastWorn to previous entry if it exists
+      items[index].lastWorn = items[index].wornHistory.length > 0 
+        ? items[index].wornHistory[items[index].wornHistory.length - 1] 
+        : null;
+    } else {
+      // Toggle on: add today's entry
+      const wearDate = new Date().toISOString();
+      items[index].wornHistory.push(wearDate);
+      items[index].lastWorn = wearDate;
+    }
+    
+    writeItems(items);
+    res.json({ success: true, item: items[index] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/items/wash-all — move all items from laundry to closet
+router.post('/wash-all', (req, res) => {
+  try {
+    const items = readItems();
+    let count = 0;
+    items.forEach(item => {
+      if (item.status === 'laundry') {
+        item.status = 'closet';
+        count++;
+      }
+    });
+    writeItems(items);
+    res.json({ success: true, message: `Washed ${count} items.`, count });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

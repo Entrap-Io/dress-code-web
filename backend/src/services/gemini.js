@@ -464,10 +464,13 @@ FINAL DIRECTIVE: The resulting image must be an EMPTY white studio containing ON
 
 // ── Outfit Recommendations ──────────────────────────────────────
 
-export async function getOutfitRecommendations(targetItem, closet, stylingMode = 'unisex', weather = null) {
+export async function getOutfitRecommendations(targetItem, closet, stylingMode = 'unisex', weather = null, userProfile = null) {
   const candidates = closet.filter(item => {
     if (item.id === targetItem.id) return false;
     if (item.category === targetItem.category) return false;
+    if (item.status === 'laundry') return false; 
+    if (item.status === 'winter-store') return false;
+    if (item.status === 'summer-store') return false;
 
     // Gender Filtering Logic
     if (stylingMode === 'man' && item.gender === 'woman') return false;
@@ -495,13 +498,24 @@ export async function getOutfitRecommendations(targetItem, closet, stylingMode =
 
   // ── Phase 1 & 2: Pre-rank by Vision & Logic ──────────────────
   const scoredCandidates = candidates.map(item => {
-    const visualSimilarity = targetItem.styleVector && item.styleVector 
-      ? calculateSimilarity(targetItem.styleVector, item.styleVector) 
+    const visualSimilarity = targetItem.styleVector && item.styleVector
+      ? calculateSimilarity(targetItem.styleVector, item.styleVector)
       : 0.5;
-    
-    // Heuristic compatibility based on categories
-    const isComplementary = targetItem.category !== item.category;
-    const logicScore = isComplementary ? (visualSimilarity * 1.2) : (visualSimilarity * 0.8);
+
+    // Apply recency penalty (e.g., if worn in last 7 days)
+    let penalty = 0;
+    if (item.lastWorn) {
+      const lastWornDate = new Date(item.lastWorn);
+      const diffDays = (new Date() - lastWornDate) / (1000 * 60 * 60 * 24);
+      if (diffDays < 7) {
+        // Linear penalty: higher for more recent wears.
+        // 0 days ago = 0.5 reduction, 7 days ago = 0 reduction
+        penalty = Math.max(0, (7 - diffDays) / 14);
+      }
+    }
+
+    const baseLogicScore = visualSimilarity * 0.8;
+    const logicScore = Math.max(0.1, baseLogicScore - penalty); // Never drop below 0.1 if it's a structural match
 
     return {
       ...item,
@@ -540,6 +554,7 @@ SELECTED ITEM:
 ${JSON.stringify(targetSummary, null, 2)}
 
 STYLING MODE: ${stylingMode}
+USER PROFILE: ${userProfile ? JSON.stringify(userProfile, null, 2) : 'None provided'}
 ${weatherContext}
 
 CLOSET (top 15 candidates filtered by AI logic):
@@ -606,7 +621,7 @@ outfitScore is 0–100. Combine your expert judgment with the technical scores p
 
 // ── Closet Search ───────────────────────────────────────────────
 
-export async function searchCloset(query, closet, stylingMode = 'unisex', weather = null) {
+export async function searchCloset(query, closet, stylingMode = 'unisex', weather = null, userProfile = null) {
   if (closet.length === 0) {
     return { outfitItems: [], reasoning: 'Your closet is empty. Add some items first!' };
   }
@@ -622,8 +637,13 @@ export async function searchCloset(query, closet, stylingMode = 'unisex', weathe
     occasionTags: item.occasionTags,
     season: item.season,
     description: item.description,
-    gender: item.gender
+    gender: item.gender,
+    status: item.status,
+    lastWorn: item.lastWorn
   })).filter(item => {
+    if (item.status === 'laundry') return false;
+    if (item.status === 'winter-store') return false;
+    if (item.status === 'summer-store') return false;
     if (stylingMode === 'man' && item.gender === 'woman') return false;
     if (stylingMode === 'woman' && item.gender === 'man') return false;
     return true;

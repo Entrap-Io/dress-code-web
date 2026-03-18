@@ -2,14 +2,27 @@
 // BACKEND_BASE is already defined in api.js
 
 // ── State ──────────────────────────────────────────────────────
-let currentFilter = 'all';
+let currentFilter = localStorage.getItem('dc_filter') || 'all';
+let currentStorageFilter = 'all';
+let currentView = localStorage.getItem('dc_view') || 'closet';
 let allItems = [];
+let userProfile = null;
 let currentWeather = null;
 
 // ── DOM refs ───────────────────────────────────────────────────
 const closetGrid = document.getElementById('closetGrid');
 const emptyState = document.getElementById('emptyState');
 const itemCount = document.getElementById('itemCount');
+
+// Laundry refs
+const laundryGrid = document.getElementById('laundryGrid');
+const laundryCount = document.getElementById('laundryCount');
+const laundryEmptyState = document.getElementById('laundryEmptyState');
+const washAllBtn = document.getElementById('washAllBtn');
+
+// Analytics refs
+const analyticsContainer = document.getElementById('analyticsContainer');
+const refreshAnalyticsBtn = document.getElementById('refreshAnalyticsBtn');
 
 // Add modal
 const addModalOverlay = document.getElementById('addModalOverlay');
@@ -29,12 +42,46 @@ const itemModalBody = document.getElementById('itemModalBody');
 async function init() {
   try {
     console.log('💎 App Init Starting...');
+    
+    // Load profile first as it provides context
+    await loadProfile();
+
     await loadItems();
+    
+    // Restore view
+    switchView(currentView);
   } catch (err) {
     console.error('💥 Critical Load Error:', err);
   } finally {
     setupEventListeners();
     console.log('✅ UI Event Listeners Ready');
+  }
+}
+
+function switchView(viewName) {
+  currentView = viewName;
+  localStorage.setItem('dc_view', viewName);
+  
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === viewName);
+  });
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.toggle('active', v.id === `view-${viewName}`);
+  });
+
+  if (viewName === 'closet') renderCloset();
+  if (viewName === 'laundry') renderLaundry();
+  if (viewName === 'storage') renderStorage();
+  if (viewName === 'analytics') loadAnalytics();
+  if (viewName === 'profile') renderProfile();
+}
+
+async function loadProfile() {
+  try {
+    userProfile = await api.getProfile();
+  } catch (err) {
+    console.warn('Could not load profile, using defaults');
+    userProfile = { gender: 'unisex', height: 175, weight: 70, bodyType: 'mesomorph' };
   }
 }
 
@@ -80,21 +127,76 @@ async function loadItems() {
   } catch (err) {
     console.warn('Weather initialization failed:', err.message);
   }
+
+  // Set initial filter chip state
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.filter === currentFilter);
+  });
+}
+
+// ── Sorting Logic ──────────────────────────────────────────────
+function sortItemsByWear(items) {
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  return [...items].sort((a, b) => {
+    const aLastStr = a.lastWorn ? a.lastWorn.split('T')[0] : null;
+    const bLastStr = b.lastWorn ? b.lastWorn.split('T')[0] : null;
+
+    // 1. Worn Today Group
+    if (aLastStr === today && bLastStr !== today) return -1;
+    if (bLastStr === today && aLastStr !== today) return 1;
+    if (aLastStr === today && bLastStr === today) {
+      // Both worn today: newest wear first
+      return new Date(b.lastWorn) - new Date(a.lastWorn);
+    }
+
+    // 2. Just Unworn Today Group (Positioned right after Worn Today)
+    if (a.justUnwornToday && !b.justUnwornToday) {
+      if (bLastStr === today) return 1;
+      return -1;
+    }
+    if (b.justUnwornToday && !a.justUnwornToday) {
+      if (aLastStr === today) return -1;
+      return 1;
+    }
+    if (a.justUnwornToday && b.justUnwornToday) {
+      // Both just unworn: newest toggle first
+      return (b.toggleTimestamp || 0) - (a.toggleTimestamp || 0);
+    }
+
+    // 3. Worn Yesterday -> Bottom
+    if (aLastStr === yesterday && bLastStr !== yesterday) return 1;
+    if (bLastStr === yesterday && aLastStr !== yesterday) return -1;
+
+    // 4. Fallback: newest added first
+    return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
+  });
 }
 
 // ── Render Closet ──────────────────────────────────────────────
 function renderCloset(filter = currentFilter) {
+  const activeItems = allItems.filter(item => 
+    !['laundry', 'winter-store', 'summer-store'].includes(item.status)
+  );
+
   const filtered = filter === 'all'
-    ? allItems
-    : allItems.filter(item => item.category === filter);
+    ? activeItems
+    : activeItems.filter(item => item.category === filter);
+
+  const sorted = sortItemsByWear(filtered);
 
   // Update count
-  itemCount.textContent = `${allItems.length} item${allItems.length !== 1 ? 's' : ''}`;
+  itemCount.textContent = `${activeItems.length} item${activeItems.length !== 1 ? 's' : ''}`;
 
   // Empty state
-  if (allItems.length === 0) {
+  if (activeItems.length === 0) {
     closetGrid.innerHTML = '';
-    emptyState.classList.add('visible');
+    if (allItems.length > 0) {
+      closetGrid.innerHTML = `<p style="color:var(--text-muted); font-style:italic; padding:2rem 0;">All your clothes are in laundry or storage!</p>`;
+    } else {
+      emptyState.classList.add('visible');
+    }
     return;
   }
   emptyState.classList.remove('visible');
@@ -104,13 +206,14 @@ function renderCloset(filter = currentFilter) {
     return;
   }
 
-  closetGrid.innerHTML = (filtered || []).map(item => `
+  closetGrid.innerHTML = (sorted || []).map(item => `
     <div class="item-card" data-id="${item.id}">
       <img
         class="item-card-img"
         src="${BACKEND_BASE}${item.imageUrl}"
         alt="${item.subcategory}"
       />
+      ${item.lastWorn && item.lastWorn.split('T')[0] === new Date().toISOString().split('T')[0] ? '<div class="item-badge" style="top:20px; left:20px; transform:none; font-size:0.6rem; padding:0.2rem 0.5rem;">WORN TODAY</div>' : ''}
       <div class="item-card-body">
         <div class="item-card-sub">${item.subcategory || item.category}</div>
         <div class="item-card-meta">${item.primaryColor}${item.secondaryColor ? ' · ' + item.secondaryColor : ''}</div>
@@ -119,9 +222,115 @@ function renderCloset(filter = currentFilter) {
           ${(item.occasionTags || []).slice(0, 2).map(t => `<span class="tag">${t}</span>`).join('')}
         </div>
       </div>
+      <div class="card-actions-overlay">
+        <button class="action-btn" data-action="laundry" data-id="${item.id}" title="Laundry">🧺 Laundry</button>
+        <button class="action-btn secondary" data-action="worn" data-id="${item.id}">👟 Worn</button>
+      </div>
       <button class="item-card-delete" data-delete="${item.id}" title="Remove item">✕</button>
     </div>
   `).join('');
+}
+
+// ── Render Laundry ──────────────────────────────────────────────
+function renderLaundry() {
+  const laundryItems = allItems.filter(item => item.status === 'laundry');
+  laundryCount.textContent = `${laundryItems.length} item${laundryItems.length !== 1 ? 's' : ''} need washing`;
+
+  if (laundryItems.length === 0) {
+    laundryGrid.innerHTML = '';
+    laundryEmptyState.style.display = 'block';
+    washAllBtn.style.display = 'none';
+    return;
+  }
+
+  laundryEmptyState.style.display = 'none';
+  washAllBtn.style.display = 'block';
+
+  laundryGrid.innerHTML = laundryItems.map(item => `
+    <div class="item-card laundry" data-id="${item.id}">
+      <img
+        class="item-card-img"
+        src="${BACKEND_BASE}${item.imageUrl}"
+        alt="${item.subcategory}"
+      />
+      <div class="item-badge">IN LAUNDRY</div>
+      <div class="item-card-body">
+        <div class="item-card-sub">${item.subcategory || item.category}</div>
+      </div>
+      <div class="card-actions-overlay" style="opacity: 1; background: rgba(0,0,0,0.4);">
+        <button class="action-btn" data-action="wash" data-id="${item.id}">🧼 Wash & Move to Closet</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Render Storage ──────────────────────────────────────────────
+function renderStorage(filter = currentStorageFilter) {
+  const allStorageItems = allItems.filter(item => ['winter-store', 'summer-store'].includes(item.status));
+  
+  const storageItems = filter === 'all' 
+    ? allStorageItems 
+    : allStorageItems.filter(item => item.status === filter);
+
+  const storageGrid = document.getElementById('storageGrid');
+  const storageCount = document.getElementById('storageCount');
+  const storageEmptyState = document.getElementById('storageEmptyState');
+
+  storageCount.textContent = `${allStorageItems.length} item${allStorageItems.length !== 1 ? 's' : ''} stored`;
+
+  if (storageItems.length === 0) {
+    storageGrid.innerHTML = '';
+    storageEmptyState.style.display = 'block';
+    return;
+  }
+  storageEmptyState.style.display = 'none';
+
+  storageGrid.innerHTML = storageItems.map(item => `
+    <div class="item-card" data-id="${item.id}">
+      <img
+        class="item-card-img"
+        src="${BACKEND_BASE}${item.imageUrl}"
+        alt="${item.subcategory}"
+      />
+      <div class="item-badge" style="top:20px; left:20px; transform:none; font-size:0.6rem; padding:0.2rem 0.5rem; background:var(--accent); color:var(--black);">
+        ${item.status === 'winter-store' ? '❄️ WINTER' : '☀️ SUMMER'}
+      </div>
+      <div class="item-card-body">
+        <div class="item-card-sub">${item.subcategory || item.category}</div>
+        <div class="item-card-meta">${item.primaryColor}</div>
+      </div>
+      <div class="card-actions-overlay">
+        <button class="action-btn" data-action="restore" data-id="${item.id}">🧥 Back to Closet</button>
+      </div>
+      <button class="item-card-delete" data-delete="${item.id}" title="Remove item">✕</button>
+    </div>
+  `).join('');
+}
+
+// ── Render Profile ─────────────────────────────────────────────
+function renderProfile() {
+  const form = document.getElementById('profileForm');
+  if (!form || !userProfile) return;
+
+  // Populate form fields
+  for (const [key, value] of Object.entries(userProfile)) {
+    const input = form.elements[key];
+    if (input) {
+      input.value = value;
+    } else {
+      // Check for option card grids
+      const grid = form.querySelector(`.option-card-grid[data-select-name="${key}"]`);
+      if (grid) {
+        const hiddenInput = form.querySelector(`input[name="${key}"]`);
+        if (hiddenInput) hiddenInput.value = value;
+        
+        // Mark active card
+        grid.querySelectorAll('.option-card').forEach(card => {
+          card.classList.toggle('active', card.dataset.value === value);
+        });
+      }
+    }
+  }
 }
 
 // ── Event Listeners ────────────────────────────────────────────
@@ -129,11 +338,7 @@ function setupEventListeners() {
   // View navigation
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const target = btn.dataset.view;
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.getElementById(`view-${target}`).classList.add('active');
+      switchView(btn.dataset.view);
     });
   });
 
@@ -143,6 +348,7 @@ function setupEventListeners() {
       document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       currentFilter = chip.dataset.filter;
+      localStorage.setItem('dc_filter', currentFilter);
       renderCloset(currentFilter);
     });
   });
@@ -192,6 +398,63 @@ function setupEventListeners() {
     }
   });
 
+  // Profile form
+  const profileForm = document.getElementById('profileForm');
+  if (profileForm) {
+    // Option card click handling
+    profileForm.querySelectorAll('.option-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const grid = card.closest('.option-card-grid');
+        const selectName = grid.dataset.selectName;
+        const hiddenInput = profileForm.querySelector(`input[name="${selectName}"]`);
+        
+        grid.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        if (hiddenInput) hiddenInput.value = card.dataset.value;
+      });
+    });
+
+    profileForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('saveProfileBtn');
+      const btnText = saveBtn.querySelector('.btn-text');
+      const btnSpinner = saveBtn.querySelector('.btn-spinner');
+
+      // Loading state
+      saveBtn.disabled = true;
+      btnText.textContent = 'Saving...';
+      btnSpinner.style.display = 'inline-block';
+
+      const formData = new FormData(profileForm);
+      const updatedProfile = Object.fromEntries(formData.entries());
+      
+      // Convert numeric fields
+      if (updatedProfile.height) updatedProfile.height = Number(updatedProfile.height);
+      if (updatedProfile.weight) updatedProfile.weight = Number(updatedProfile.weight);
+
+      try {
+        userProfile = await api.updateProfile(updatedProfile);
+        showToast('Profile saved successfully!', 'success');
+      } catch (err) {
+        showToast('Failed to save profile', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        btnText.textContent = 'Save Changes';
+        btnSpinner.style.display = 'none';
+      }
+    });
+  }
+
+  // Storage filter chips
+  document.querySelectorAll('[data-storage-filter]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('[data-storage-filter]').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentStorageFilter = chip.dataset.storageFilter;
+      renderStorage(currentStorageFilter);
+    });
+  });
+
   optT2I.addEventListener('change', () => {
     if (optT2I.checked) {
       optI2I.checked = false;
@@ -214,8 +477,101 @@ function setupEventListeners() {
     }
   });
 
+  // Laundry and Worn actions (delegation)
+  document.addEventListener('click', async e => {
+    const actionBtn = e.target.closest('[data-action]');
+    if (!actionBtn) return;
+
+    const { action, id } = actionBtn.dataset;
+    
+    try {
+      if (action === 'laundry') {
+        await api.updateItemStatus(id, 'laundry');
+        const item = allItems.find(i => i.id === id);
+        if (item) item.status = 'laundry';
+        renderCloset();
+        showToast('Moved to laundry', 'info');
+      } 
+      else if (action === 'worn') {
+        const item = await api.markItemWorn(id);
+        const idx = allItems.findIndex(i => i.id === id);
+        
+        const isNowWorn = item.lastWorn && item.lastWorn.includes(new Date().toISOString().split('T')[0]);
+        item.toggleTimestamp = Date.now();
+        item.justUnwornToday = !isNowWorn;
+
+        if (idx !== -1) allItems[idx] = item;
+        
+        const msg = isNowWorn ? 'Marked as worn!' : 'Dress-code removed!';
+        showToast(msg, 'success');
+        renderCloset();
+      }
+      else if (action === 'wash') {
+        await api.updateItemStatus(id, 'closet');
+        const item = allItems.find(i => i.id === id);
+        if (item) item.status = 'closet';
+        renderLaundry();
+        showToast('Clean and back in closet!', 'success');
+      }
+      else if (action === 'winter-store' || action === 'summer-store') {
+        await api.updateItemStatus(id, action);
+        const item = allItems.find(i => i.id === id);
+        if (item) item.status = action;
+        renderCloset();
+        showToast(`Moved to ${action === 'winter-store' ? 'Winter' : 'Summer'} Store`, 'info');
+      }
+      else if (action === 'restore') {
+        await api.updateItemStatus(id, 'closet');
+        const item = allItems.find(i => i.id === id);
+        if (item) item.status = 'closet';
+        renderStorage();
+        showToast('Cleaned and back in closet!', 'success');
+      }
+      else if (action === 'worn-outfit') {
+        const ids = id.split(',');
+        for (const itemId of ids) {
+          const updatedItem = await api.markItemWorn(itemId);
+          const idx = allItems.findIndex(i => i.id === itemId);
+          if (idx !== -1) allItems[idx] = updatedItem;
+        }
+        showToast(`Full outfit marked as worn!`, 'success');
+        actionBtn.disabled = true;
+        actionBtn.textContent = '✅ Outfit Worn';
+        renderCloset(); 
+      }
+
+      // Close modal if action was taken from inside it
+      const modal = e.target.closest('#itemModalOverlay');
+      if (modal && (action === 'laundry' || action === 'wash' || action === 'winter-store' || action === 'summer-store' || action === 'restore')) {
+        closeItemModal();
+      }
+    } catch (err) {
+      showToast(`❌ ${err.message}`, 'error');
+    }
+  });
+
+  // Wash All
+  document.getElementById('washAllBtn').addEventListener('click', async () => {
+    try {
+      await api.washAllLaundry();
+      allItems.forEach(i => { if (i.status === 'laundry') i.status = 'closet'; });
+      renderLaundry();
+      showToast('All items are now clean!', 'success');
+    } catch (err) {
+      showToast(`❌ ${err.message}`, 'error');
+    }
+  });
+
+  // Refresh Analytics
+  document.getElementById('refreshAnalyticsBtn').addEventListener('click', loadAnalytics);
+
   // Closet grid — delegate clicks for card open and delete
   closetGrid.addEventListener('click', e => {
+    // 1. Ignore if clicking action buttons
+    if (e.target.closest('.card-actions-overlay') || e.target.closest('[data-action]')) {
+      return; 
+    }
+
     const deleteBtn = e.target.closest('[data-delete]');
     if (deleteBtn) {
       e.stopPropagation();
@@ -361,8 +717,14 @@ async function openItemModal(itemId) {
         <div class="item-attr"><label>Season</label><span>${(item.season || []).join(', ')}</span></div>
       </div>
 
-      <div class="item-card-tags" style="margin-bottom:1.5rem">
         ${(item.occasionTags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+      </div>
+
+      <div class="item-modal-actions" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:2rem;">
+        <button class="action-btn" data-action="laundry" data-id="${item.id}">🧺 Laundry</button>
+        <button class="action-btn" data-action="winter-store" data-id="${item.id}">❄️ Winter Store</button>
+        <button class="action-btn" data-action="summer-store" data-id="${item.id}">☀️ Summer Store</button>
+        <button class="action-btn secondary" data-action="worn" data-id="${item.id}">👟 Mark as Worn Today</button>
       </div>
 
       <div class="rec-section">
@@ -383,8 +745,9 @@ async function openItemModal(itemId) {
 
   // Load recommendations
   try {
-    const stylingMode = document.getElementById('stylingMode').value;
-    const { recommendations } = await api.getRecommendations(item.id, stylingMode, currentWeather);
+    // Use gender from profile
+    const gender = userProfile?.gender || 'unisex';
+    const { recommendations } = await api.getRecommendations(item.id, gender, currentWeather);
     const recGrid = document.getElementById('recGrid');
     const recLoading = itemModalBody.querySelector('.rec-loading');
     const recEmpty = document.getElementById('recEmpty');
@@ -438,8 +801,9 @@ async function handleSearch() {
   searchBtn.disabled = true;
 
   try {
-    const stylingMode = document.getElementById('stylingMode').value;
-    const data = await api.searchOutfit(query, stylingMode, currentWeather);
+    // Use gender from profile
+    const gender = userProfile?.gender || 'unisex';
+    const data = await api.searchOutfit(query, gender, currentWeather);
     const outfit = data.outfit;
     const message = data.message;
 
@@ -479,6 +843,7 @@ async function handleSearch() {
                 <div class="outfit-item-info">
                   <div class="outfit-item-role">${item.role || item.subcategory}</div>
                   <div class="outfit-item-name">${item.subcategory}</div>
+                  <button class="action-btn tiny" data-action="worn" data-id="${item.id}" style="margin-top:5px; font-size:0.6rem;">👟 Wear</button>
                 </div>
               </div>
             `).join('')}
@@ -494,6 +859,11 @@ async function handleSearch() {
               <p class="viz-accuracy-tip">Accuracy: Verified against style vectors.</p>
             </div>
           </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; display: flex; justify-content: flex-end;">
+          <button class="btn-primary" data-action="worn-outfit" data-id="${itemIds.join(',')}">👞 Mark Full Outfit Worn</button>
         </div>
       </div>
     `;
@@ -585,6 +955,134 @@ function updateWeatherWidget(weather) {
   widget.querySelector('.weather-temp').textContent = `${weather.temp}°C`;
   widget.querySelector('.weather-city').textContent = weather.city;
   widget.style.display = 'flex';
+}
+
+// ── Analytics ──────────────────────────────────────────────────
+async function loadAnalytics() {
+  analyticsContainer.innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Crunching the numbers with AI...</p>
+    </div>
+  `;
+
+  try {
+    const data = await api.getAnalytics();
+    if (data.success) {
+      renderAnalyticsData(data.analytics);
+    }
+  } catch (err) {
+    analyticsContainer.innerHTML = `<p style="color:var(--red); padding:2rem; text-align:center;">❌ Analytics Error: ${err.message}</p>`;
+  }
+}
+
+function renderAnalyticsData(data) {
+  if (data.message) {
+    analyticsContainer.innerHTML = `<p style="color:var(--text-muted); padding:2rem; text-align:center;">${data.message}</p>`;
+    return;
+  }
+
+  const { stats, colors, categories, dormant, topWorn } = data;
+
+  analyticsContainer.innerHTML = `
+    <!-- Stats Card -->
+    <div class="analytics-card">
+      <div class="analytics-card-header">
+        <h3 class="analytics-card-title">Closet Overview</h3>
+      </div>
+      <div class="analytics-stat-grid">
+        <div class="stat-item">
+          <div class="stat-value">${stats.totalItems}</div>
+          <div class="stat-label">Total Items</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">${stats.totalWears}</div>
+          <div class="stat-label">Total Wears</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Favorite Colors -->
+    <div class="analytics-card">
+      <div class="analytics-card-header">
+        <h3 class="analytics-card-title">Most Worn Colors</h3>
+      </div>
+      <div class="chart-list">
+        ${Object.entries(colors.worn)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([color, count]) => {
+            const percent = stats.totalWears > 0 ? (count / stats.totalWears) * 100 : 0;
+            return `
+              <div class="chart-row">
+                <div class="chart-row-header">
+                  <span>${color}</span>
+                  <span>${count} wears</span>
+                </div>
+                <div class="chart-bar-bg">
+                  <div class="chart-bar-fill" style="width: ${percent}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('') || '<p style="font-size:0.8rem;color:var(--text-muted)">No wear data yet.</p>'}
+      </div>
+    </div>
+
+    <!-- Top Categories -->
+    <div class="analytics-card">
+      <div class="analytics-card-header">
+        <h3 class="analytics-card-title">Category Usage</h3>
+      </div>
+      <div class="chart-list">
+        ${Object.entries(categories.owned)
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, ownedCount]) => {
+            const wornCount = categories.worn[cat] || 0;
+            const values = Object.values(categories.owned);
+            const max = values.length > 0 ? Math.max(...values) : 1;
+            const ownedPercent = (ownedCount / max) * 100;
+            return `
+              <div class="chart-row">
+                <div class="chart-row-header">
+                  <span>${cat}</span>
+                  <span>${ownedCount} owned / ${wornCount} worn</span>
+                </div>
+                <div class="chart-bar-bg">
+                  <div class="chart-bar-fill worn" style="width: ${ownedPercent}%"></div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+      </div>
+    </div>
+
+    <!-- Dormant Items -->
+    <div class="analytics-card">
+      <div class="analytics-card-header">
+        <h3 class="analytics-card-title">Dormant Items</h3>
+      </div>
+      <div class="dormant-list">
+        ${dormant.map(item => `
+          <div class="dormant-item">
+            <span>${item.name}</span>
+            <span class="dormant-reason">${item.reason}</span>
+          </div>
+        `).join('') || '<p style="font-size:0.8rem;color:var(--accent)">Everything is being worn! Great job.</p>'}
+      </div>
+    </div>
+
+    <!-- Hall of Fame -->
+    <div class="analytics-card">
+      <div class="analytics-card-header">
+        <h3 class="analytics-card-title">Most Worn Clothes</h3>
+      </div>
+      <div class="top-worn-grid">
+        ${topWorn.map(item => `
+          <img class="top-worn-img" src="${BACKEND_BASE}${item.image}" title="${item.name}: ${item.count} wears" />
+        `).join('') || '<p style="font-size:0.8rem;color:var(--text-muted)">Keep wearing to see rankings.</p>'}
+      </div>
+    </div>
+  `;
 }
 
 // ── Start ──────────────────────────────────────────────────────

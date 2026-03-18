@@ -11,6 +11,15 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 const ITEMS_FILE = path.join(__dirname, '../../data/items.json');
+const PROFILE_FILE = path.join(__dirname, '../../data/profile.json');
+
+function readProfile() {
+  try {
+    return JSON.parse(fs.readFileSync(PROFILE_FILE, 'utf8'));
+  } catch {
+    return { gender: 'unisex' };
+  }
+}
 
 function readItems() {
   try {
@@ -25,7 +34,10 @@ async function handleSearch(req, res) {
   try {
     const { query, stylingMode, weather } = req.body;
     const items = readItems();
-    const outfit = await searchCloset(query, items, stylingMode || 'unisex', weather);
+    const profile = readProfile();
+    const finalMode = stylingMode || profile.gender || 'unisex';
+
+    const outfit = await searchCloset(query, items, finalMode, weather, profile);
     res.json({ success: true, outfit });
   } catch (err) {
     console.error('❌ Search error:', err.message);
@@ -61,7 +73,9 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const stylingMode = req.body.stylingMode || req.query.stylingMode || 'unisex';
+    const profile = readProfile();
+    const finalMode = req.body.stylingMode || req.query.stylingMode || profile.gender || 'unisex';
+    
     let weather = null;
     try {
       if (req.body.weather) {
@@ -73,8 +87,8 @@ router.post('/', async (req, res) => {
       console.warn('⚠️ Could not parse weather context:', e.message);
     }
 
-    console.log(`👗 Getting recommendations for: ${targetItem.subcategory} (Mode: ${stylingMode})`);
-    const recommendations = await getOutfitRecommendations(targetItem, items, stylingMode, weather);
+    console.log(`👗 Getting recommendations for: ${targetItem.subcategory} (Mode: ${finalMode})`);
+    const recommendations = await getOutfitRecommendations(targetItem, items, finalMode, weather, profile);
 
     // Enrich recommendations with full item data
     const enriched = (recommendations || [])

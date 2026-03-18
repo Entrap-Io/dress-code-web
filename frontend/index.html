@@ -26,15 +26,12 @@
       </div>
       <nav class="nav">
         <button class="nav-btn active" data-view="closet">Closet</button>
+        <button class="nav-btn" data-view="laundry">Laundry</button>
+        <button class="nav-btn" data-view="storage">Storage</button>
         <button class="nav-btn" data-view="search">Outfit AI</button>
+        <button class="nav-btn" data-view="analytics">Analytics</button>
+        <button class="nav-btn" data-view="profile">Profile</button>
       </nav>
-      <div class="style-mode-selector">
-        <select id="stylingMode">
-          <option value="unisex">🌐 Unisex Mode</option>
-          <option value="man">👔 Man Mode</option>
-          <option value="woman">👗 Woman Mode</option>
-        </select>
-      </div>
       <button class="add-btn" id="openAddModal">+ Add Item</button>
     </div>
   </header>
@@ -69,7 +66,49 @@
     </div>
   </main>
 
-  <!-- ── VIEW: OUTFIT AI / SEARCH ── -->
+  <!-- ── VIEW: LAUNDRY ── -->
+  <main class="view" id="view-laundry">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">Laundry Basket</h1>
+        <p class="view-subtitle" id="laundryCount">0 items need washing</p>
+      </div>
+      <div class="view-actions">
+        <button class="btn-secondary" id="washAllBtn">🧼 Wash All Items</button>
+      </div>
+    </div>
+    <div class="closet-grid" id="laundryGrid">
+      <!-- Laundry items render here -->
+    </div>
+    <div class="empty-state" id="laundryEmptyState" style="display:none">
+      <div class="empty-icon">✨</div>
+      <h2>Laundry is empty!</h2>
+      <p>All your clothes are clean and in the closet.</p>
+    </div>
+  </main>
+
+  <!-- ── VIEW: STORAGE ── -->
+  <main class="view" id="view-storage">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">Seasonal Storage</h1>
+        <p class="view-subtitle" id="storageCount">0 items stored</p>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-chip active" data-storage-filter="all">All</button>
+        <button class="filter-chip" data-storage-filter="summer-store">Summer</button>
+        <button class="filter-chip" data-storage-filter="winter-store">Winter</button>
+      </div>
+    </div>
+    <div class="closet-grid" id="storageGrid">
+      <!-- Storage items render here -->
+    </div>
+    <div class="empty-state" id="storageEmptyState" style="display:none">
+      <div class="empty-icon">📦</div>
+      <h2>Storage is empty</h2>
+      <p>Items in storage don't appear in recommendations.</p>
+    </div>
+  </main>
   <main class="view" id="view-search">
     <div class="view-header">
       <div>
@@ -95,6 +134,162 @@
 
     <div class="search-results" id="searchResults">
       <!-- Results render here -->
+    </div>
+  </main>
+
+  <!-- ── VIEW: ANALYTICS ── -->
+  <main class="view" id="view-analytics">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">Advanced Analytics</h1>
+        <p class="view-subtitle">Insights into your style and habits</p>
+      </div>
+      <div class="view-actions">
+        <button class="btn-secondary" id="refreshAnalyticsBtn">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <div class="analytics-container" id="analyticsContainer">
+      <!-- Analytics dashboard renders here -->
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Crunching the numbers with AI...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── VIEW: PROFILE ── -->
+  <main class="view" id="view-profile">
+    <div class="view-header">
+      <div>
+        <h1 class="view-title">User Profile</h1>
+        <p class="view-subtitle">Your personal AI fashion identity</p>
+      </div>
+    </div>
+    <div class="profile-container">
+      <form id="profileForm" class="profile-form">
+        
+        <!-- SECTION: IDENTITY & LIFESTYLE -->
+        <div class="profile-section">
+          <h3 class="section-title"><span class="icon">👤</span> Identity & Lifestyle</h3>
+          <div class="form-group">
+            <label>Gender / Styling Context</label>
+            <div class="option-card-grid" data-select-name="gender">
+              <div class="option-card" data-value="man"><span class="card-icon">👨</span><span class="card-label">Man</span></div>
+              <div class="option-card" data-value="woman"><span class="card-icon">👩</span><span class="card-label">Woman</span></div>
+              <div class="option-card" data-value="unisex"><span class="card-icon">🌐</span><span class="card-label">Unisex</span></div>
+            </div>
+            <input type="hidden" name="gender" value="unisex">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Profession / Context</label>
+              <select name="profession" class="premium-input">
+                <option value="student">🎓 Student</option>
+                <option value="corporate">💼 Corporate / Office</option>
+                <option value="creative">🎨 Creative / Arts</option>
+                <option value="healthcare">🏥 Healthcare</option>
+                <option value="remote">🏠 Remote / Tech</option>
+                <option value="outdoor">🌳 Outdoor / Manual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Age Group / Generation</label>
+              <select name="ageGroup" class="premium-input">
+                <option value="gen-alpha">Gen Alpha (Kids)</option>
+                <option value="gen-z">Gen Z (Cool/Modern)</option>
+                <option value="millennial">Millennial (Professional/Active)</option>
+                <option value="gen-x">Gen X (Established/Classic)</option>
+                <option value="boomer">Boomer (Refined/Timeless)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION: PHYSICAL PROFILE -->
+        <div class="profile-section">
+          <h3 class="section-title"><span class="icon">⚖️</span> Physical Profile</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Height (cm)</label>
+              <input type="number" name="height" placeholder="175" class="premium-input">
+            </div>
+            <div class="form-group">
+              <label>Weight (kg)</label>
+              <input type="number" name="weight" placeholder="70" class="premium-input">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Body Shape (Visual Guide)</label>
+            <div class="option-card-grid body-types" data-select-name="bodyType">
+              <div class="option-card" data-value="rectangle">
+                <span class="card-label">Rectangle</span>
+                <span class="card-sub">Straight / Athletic</span>
+              </div>
+              <div class="option-card" data-value="pear">
+                <span class="card-label">Pear</span>
+                <span class="card-sub">Hip-heavy</span>
+              </div>
+              <div class="option-card" data-value="inverted-triangle">
+                <span class="card-label">Inverted Triangle</span>
+                <span class="card-sub">Broad Shoulders</span>
+              </div>
+              <div class="option-card" data-value="hourglass">
+                <span class="card-label">Hourglass</span>
+                <span class="card-sub">Balanced Curves</span>
+              </div>
+              <div class="option-card" data-value="apple">
+                <span class="card-label">Apple</span>
+                <span class="card-sub">Round / Mid-heavy</span>
+              </div>
+            </div>
+            <input type="hidden" name="bodyType" value="rectangle">
+          </div>
+
+          <div class="form-group" style="margin-top: 1.5rem;">
+            <label>Skin Tone / Complexion</label>
+            <select name="skinTone" class="premium-input">
+              <option value="fair">Fair / Very Light</option>
+              <option value="light">Light / Porcelain</option>
+              <option value="neutral">Neutral / Olive</option>
+              <option value="tan">Tan / Golden</option>
+              <option value="deep">Deep / Rich</option>
+              <option value="ebony">Ebony / Dark</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- SECTION: STYLE DNA -->
+        <div class="profile-section">
+          <h3 class="section-title"><span class="icon">🎨</span> Style DNA</h3>
+          <div class="form-group">
+            <label>Style Aesthetic</label>
+            <select name="stylePref" class="premium-input">
+              <select name="stylePref" class="premium-input">
+                <option value="minimalist">Minimalist</option>
+                <option value="streetwear">Streetwear</option>
+                <option value="old-money">Old Money / Classic</option>
+                <option value="dark-academia">Dark Academia</option>
+                <option value="sporty">Active / Techwear</option>
+                <option value="avant-garde">Avant-Garde</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Additional Context for AI</label>
+            <textarea name="bio" rows="3" class="premium-input" placeholder="e.g. I hate the color yellow. I prefer high-waisted pants. I like to dress 'understated luxury'."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="saveProfileBtn">
+            <span class="btn-text">Save Changes</span>
+            <span class="btn-spinner" style="display:none">⏳</span>
+          </button>
+        </div>
+      </form>
     </div>
   </main>
 
