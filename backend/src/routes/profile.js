@@ -19,7 +19,8 @@ function readProfile() {
       weight: 70,
       bodyType: 'mesomorph',
       skinTone: 'neutral',
-      stylePref: 'casual'
+      stylePref: 'casual',
+      location: 'London'
     };
   }
 }

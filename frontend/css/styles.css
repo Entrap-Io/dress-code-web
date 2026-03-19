@@ -12,6 +12,7 @@
   --text-muted: #666;
 
   --font-display: 'Bebas Neue', sans-serif;
+  --font-serif: 'Instrument Serif', serif;
   --font-body: 'DM Sans', sans-serif;
 
   --radius: 4px;
@@ -1119,4 +1120,321 @@ textarea.premium-input {
     .option-card-grid {
         grid-template-columns: 1fr;
     }
+}
+/* ─── AGENDA WIDGET ─── */
+.agenda-widget {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.agenda-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 1rem;
+}
+
+.agenda-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.agenda-event {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.agenda-event .time {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* ─── MAGAZINE SPREAD (OOTD) ─── */
+.ootd-magazine-spread {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 0;
+    min-height: calc(100vh - 160px);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    margin: 1rem;
+    box-shadow: var(--shadow-2xl), 0 0 50px rgba(0,0,0,0.3);
+}
+
+.ootd-lookbook {
+    padding: 4rem;
+    background: linear-gradient(135deg, rgba(200, 169, 110, 0.05), transparent);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+}
+
+.magazine-title {
+    font-family: var(--font-serif);
+    font-size: 4rem;
+    font-style: italic;
+    line-height: 0.9;
+    color: var(--white);
+    margin: 1rem 0 3rem;
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+
+.ootd-subcard-title {
+    font-family: var(--font-serif);
+    font-size: 2.2rem;
+    font-style: italic;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+}
+
+.ootd-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2.5rem;
+}
+
+.ootd-hero-subcard {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.ootd-hero-subcard:hover {
+    transform: translateY(-12px) scale(1.02);
+    border-color: var(--accent);
+    background: rgba(200, 169, 110, 0.08);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.ootd-subcard-title {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+}
+
+.ootd-subcard-reasoning {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.ootd-subcard-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.ootd-subcard-items img {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: var(--card-bg);
+}
+
+.ootd-side-panel {
+    padding: 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+    background: rgba(255,255,255,0.01);
+}
+
+.panel-label {
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+    display: block;
+    opacity: 0.8;
+}
+
+.panel-text {
+    font-size: 1.2rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.9;
+}
+
+.ctx-pill {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    padding: 1.2rem;
+    border-radius: 16px;
+    font-weight: 700;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.premium-badge {
+    background: var(--accent);
+    color: var(--black);
+    padding: 0.5rem 1.5rem;
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    display: inline-block;
+}
+
+.btn-large.glow {
+    height: 64px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 10px 30px rgba(200, 169, 110, 0.15);
+}
+
+@media (max-width: 1100px) {
+    .ootd-magazine-spread { grid-template-columns: 1fr; }
+    .magazine-title { font-size: 3.5rem; }
+}
+
+/* ── SKELETON LOADING ── */
+.skeleton-pulse {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 8px;
+    height: 100%;
+    width: 100%;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.ootd-loading-state {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 2rem;
+}
+.skeleton-title { height: 60px; width: 80%; }
+.skeleton-text { height: 20px; width: 100%; }
+.skeleton-items { display: flex; gap: 1rem; }
+.skeleton-thumb { width: 90px; height: 90px; }
+
+/* ── OOTD VIZ ── */
+.ootd-viz-container {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.ootd-viz-image {
+    width: 100%;
+    max-width: 400px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-xl);
+}
+
+.btn-viz-ootd {
+    background: rgba(200, 169, 110, 0.1);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-viz-ootd:hover {
+    background: var(--accent);
+    color: var(--black);
+}
+
+/* ── AI FEEDBACK ── */
+.feedback-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.feedback-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition);
+    font-size: 0.8rem;
+}
+
+.feedback-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--white);
+    color: var(--white);
+    transform: translateY(-1px);
+}
+
+.feedback-btn.up:hover {
+    color: #4ade80; /* Green */
+    border-color: #4ade80;
+}
+
+.feedback-btn.down:hover {
+    color: #f87171; /* Red */
+    border-color: #f87171;
+}
+
+.feedback-btn.active.up {
+    background: rgba(74, 222, 128, 0.15);
+    color: #4ade80;
+    border-color: #4ade80;
+}
+
+.feedback-btn.active.down {
+    background: rgba(248, 113, 113, 0.15);
+    color: #f87171;
+    border-color: #f87171;
+}
+
+.feedback-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }

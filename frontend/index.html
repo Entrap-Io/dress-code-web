@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -26,6 +26,7 @@
       </div>
       <nav class="nav">
         <button class="nav-btn active" data-view="closet">Closet</button>
+        <button class="nav-btn" data-view="ootd">OOTD</button>
         <button class="nav-btn" data-view="laundry">Laundry</button>
         <button class="nav-btn" data-view="storage">Storage</button>
         <button class="nav-btn" data-view="search">Outfit AI</button>
@@ -132,8 +133,60 @@
       </div>
     </div>
 
+    <!-- ── TODAY'S AGENDA WIDGET ── -->
+    <div id="agendaWidget" class="agenda-widget" style="display: none;">
+      <h3 class="agenda-title">📅 Today's Agenda</h3>
+      <div id="agendaList" class="agenda-list">
+        <!-- Events render here -->
+      </div>
+    </div>
+
     <div class="search-results" id="searchResults">
       <!-- Results render here -->
+    </div>
+  </main>
+
+  <!-- ── VIEW: OOTD (Stylist's Pick) ── -->
+  <main class="view" id="view-ootd">
+    <div class="ootd-magazine-spread">
+      <!-- LEFT: THE LOOKBOOK -->
+      <div class="ootd-lookbook">
+        <div class="lookbook-header">
+          <span class="premium-badge" id="ootdHeroBadge">Stylist's Pick</span>
+          <h1 class="magazine-title" id="ootdHeroName">Loading your look...</h1>
+        </div>
+        
+        <div id="ootdHeroItems" class="ootd-gallery-grid">
+          <!-- Multi-outfit cards or single hero item -->
+          <div class="ootd-skeleton-card"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: THE CONTEXT PANEL -->
+      <div class="ootd-side-panel">
+        <div class="panel-section">
+          <h4 class="panel-label">Expert Reasoning</h4>
+          <p class="panel-text" id="ootdHeroReasoning">Analyzing your wardrobe DNA and daily agenda...</p>
+        </div>
+
+        <div class="panel-section">
+          <h4 class="panel-label">Environment & Agenda</h4>
+          <div class="context-pills">
+            <div class="ctx-pill" id="ootdWeatherInfo">🌥️ ---°C</div>
+            <div class="ctx-pill" id="ootdAgendaInfo">📅 -- events</div>
+          </div>
+        </div>
+
+        <div class="panel-section actions">
+          <h4 class="panel-label">Styling Controls</h4>
+          <div class="ootd-strategy-toggle">
+            <button class="strategy-btn active" data-strategy="single">Essential</button>
+            <button class="strategy-btn" data-strategy="multiple" id="heroMultiBtn">Scheduled</button>
+          </div>
+          <button class="btn-primary btn-large glow" id="markHeroOotdWornBtn">Wear This Outfit</button>
+          <button class="btn-secondary" id="refreshHeroOotdBtn">🔄 Regenerate Look</button>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -205,6 +258,33 @@
               </select>
             </div>
           </div>
+          <div class="form-group" style="margin-top: 1.5rem;">
+            <label>Location / City</label>
+            <input type="text" name="location" id="profileLocationInput" placeholder="Detecting..." class="premium-input">
+            <input type="hidden" name="lat" id="profileLat">
+            <input type="hidden" name="lon" id="profileLon">
+            <p class="form-tip">Used for weather-aware styling. Detected via browser.</p>
+          </div>
+          <div class="form-group" style="margin-top: 1.5rem;">
+            <label>Calendar Sync (iCal Link)</label>
+            <input type="url" name="icalUrl" placeholder="https://..." class="premium-input" id="profileIcalInput">
+            <p class="form-tip">Paste your private iCal link to enable multi-outfit scheduling.</p>
+          </div>
+          
+          <div class="form-row" style="margin-top: 1.5rem;">
+            <div class="form-group">
+              <label>OOTD Strategy</label>
+              <select name="ootdCountMode" class="premium-input" id="ootdCountModeSelect">
+                <option value="single">Single Ready-to-Wear</option>
+                <option value="multiple">Smart Multi-Outfit (Requires iCal)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Curate Time</label>
+              <input type="time" name="ootdTime" class="premium-input" value="21:00">
+            </div>
+          </div>
+          <p class="form-tip" id="ootdCountTip">The AI will prepare your outfit for the next day at this time.</p>
         </div>
 
         <!-- SECTION: PHYSICAL PROFILE -->
@@ -267,15 +347,13 @@
           <div class="form-group">
             <label>Style Aesthetic</label>
             <select name="stylePref" class="premium-input">
-              <select name="stylePref" class="premium-input">
-                <option value="minimalist">Minimalist</option>
-                <option value="streetwear">Streetwear</option>
-                <option value="old-money">Old Money / Classic</option>
-                <option value="dark-academia">Dark Academia</option>
-                <option value="sporty">Active / Techwear</option>
-                <option value="avant-garde">Avant-Garde</option>
-              </select>
-            </div>
+              <option value="minimalist">Minimalist</option>
+              <option value="streetwear">Streetwear</option>
+              <option value="old-money">Old Money / Classic</option>
+              <option value="dark-academia">Dark Academia</option>
+              <option value="sporty">Active / Techwear</option>
+              <option value="avant-garde">Avant-Garde</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Additional Context for AI</label>
@@ -283,12 +361,12 @@
           </div>
         </div>
 
-        <div class="form-actions">
-          <button type="submit" class="btn-primary" id="saveProfileBtn">
-            <span class="btn-text">Save Changes</span>
-            <span class="btn-spinner" style="display:none">⏳</span>
+        <div class="form-actions" style="justify-content: center; margin-top: 2rem;">
+          <button type="submit" class="btn-primary" style="padding: 1rem 4rem; font-size: 1.1rem; box-shadow: 0 10px 30px rgba(200, 169, 110, 0.2);">
+            Save Stylist Profile
           </button>
         </div>
+
       </form>
     </div>
   </main>

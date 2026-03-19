@@ -68,6 +68,34 @@ export async function scoreOutfitCompatibility(targetItem, candidateItem) {
 /**
  * Calculates cosine similarity between two vectors.
  */
+/**
+ * Calculates both Visual (V) and Logic (L) scores for a candidate item relative to a target.
+ * Matches the logic previously only found in gemini.js.
+ */
+export function calculateMatchingScores(targetItem, candidateItem) {
+  const visualSimilarity = targetItem.styleVector && candidateItem.styleVector
+    ? calculateSimilarity(targetItem.styleVector, candidateItem.styleVector)
+    : 0.5;
+
+  // Apply recency penalty (e.g., if worn in last 7 days)
+  let penalty = 0;
+  if (candidateItem.lastWorn) {
+    const lastWornDate = new Date(candidateItem.lastWorn);
+    const diffDays = (new Date() - lastWornDate) / (1000 * 60 * 60 * 24);
+    if (diffDays < 7) {
+      penalty = Math.max(0, (7 - diffDays) / 14);
+    }
+  }
+
+  const baseLogicScore = visualSimilarity * 0.8;
+  const logicScore = Math.max(0.1, Math.min(1, baseLogicScore - penalty));
+
+  return {
+    visualSimilarity: parseFloat(visualSimilarity.toFixed(2)),
+    logicScore: parseFloat(logicScore.toFixed(2))
+  };
+}
+
 export function calculateSimilarity(vecA, vecB) {
   if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
   let dotProduct = 0;

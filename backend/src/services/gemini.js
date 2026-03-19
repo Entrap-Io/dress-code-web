@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 import { getTextChain, getT2IChain, getI2IChain, getDirectAiChain } from '../config/models.js';
-import { calculateSimilarity, scoreOutfitCompatibility } from './huggingface.js';
+import { calculateSimilarity, scoreOutfitCompatibility, calculateMatchingScores } from './huggingface.js';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -464,7 +464,7 @@ FINAL DIRECTIVE: The resulting image must be an EMPTY white studio containing ON
 
 // ── Outfit Recommendations ──────────────────────────────────────
 
-export async function getOutfitRecommendations(targetItem, closet, stylingMode = 'unisex', weather = null, userProfile = null) {
+export async function getOutfitRecommendations(targetItem, closet, stylingMode = 'unisex', weather = null, userProfile = null, agenda = []) {
   const candidates = closet.filter(item => {
     if (item.id === targetItem.id) return false;
     if (item.category === targetItem.category) return false;
@@ -498,29 +498,10 @@ export async function getOutfitRecommendations(targetItem, closet, stylingMode =
 
   // ── Phase 1 & 2: Pre-rank by Vision & Logic ──────────────────
   const scoredCandidates = candidates.map(item => {
-    const visualSimilarity = targetItem.styleVector && item.styleVector
-      ? calculateSimilarity(targetItem.styleVector, item.styleVector)
-      : 0.5;
-
-    // Apply recency penalty (e.g., if worn in last 7 days)
-    let penalty = 0;
-    if (item.lastWorn) {
-      const lastWornDate = new Date(item.lastWorn);
-      const diffDays = (new Date() - lastWornDate) / (1000 * 60 * 60 * 24);
-      if (diffDays < 7) {
-        // Linear penalty: higher for more recent wears.
-        // 0 days ago = 0.5 reduction, 7 days ago = 0 reduction
-        penalty = Math.max(0, (7 - diffDays) / 14);
-      }
-    }
-
-    const baseLogicScore = visualSimilarity * 0.8;
-    const logicScore = Math.max(0.1, baseLogicScore - penalty); // Never drop below 0.1 if it's a structural match
-
+    const scores = calculateMatchingScores(targetItem, item);
     return {
       ...item,
-      visualSimilarity,
-      logicScore: Math.min(1, logicScore)
+      ...scores
     };
   })
   .sort((a, b) => b.logicScore - a.logicScore)
@@ -555,6 +536,7 @@ ${JSON.stringify(targetSummary, null, 2)}
 
 STYLING MODE: ${stylingMode}
 USER PROFILE: ${userProfile ? JSON.stringify(userProfile, null, 2) : 'None provided'}
+TODAY'S AGENDA: ${agenda && agenda.length > 0 ? agenda.join(', ') : 'No events scheduled'}
 ${weatherContext}
 
 CLOSET (top 15 candidates filtered by AI logic):
@@ -621,7 +603,7 @@ outfitScore is 0–100. Combine your expert judgment with the technical scores p
 
 // ── Closet Search ───────────────────────────────────────────────
 
-export async function searchCloset(query, closet, stylingMode = 'unisex', weather = null, userProfile = null) {
+export async function searchCloset(query, closet, stylingMode = 'unisex', weather = null, userProfile = null, agenda = []) {
   if (closet.length === 0) {
     return { outfitItems: [], reasoning: 'Your closet is empty. Add some items first!' };
   }
@@ -649,30 +631,43 @@ export async function searchCloset(query, closet, stylingMode = 'unisex', weathe
     return true;
   });
 
-  const prompt = `You are an expert personal stylist with access to a user's wardrobe. Build a complete outfit for their request.
-
+  const prompt = `You are an expert personal stylist. Build a perfect style plan for the user.
+  
 USER REQUEST: "${query}"
 STYLING MODE: ${stylingMode}
-${weather ? `CURRENT WEATHER in ${weather.city}: ${weather.temp}°C, ${weather.conditionText}.` : ""}
+${weather?.events ? `EVENT-SPECIFIC WEATHER: ${JSON.stringify(weather.events)}` : (weather ? `WEATHER: ${weather.temp}°C, ${weather.conditionText}` : "")}
+TODAY'S AGENDA: ${agenda && agenda.length > 0 ? agenda.join(', ') : 'No events'}
+USER PROFILE: ${userProfile ? JSON.stringify(userProfile) : 'Standard'}
 
 THEIR WARDROBE:
-${JSON.stringify(closetSummary, null, 2)}
+${JSON.stringify(closetSummary.slice(0, 50), null, 2)}
 
 Instructions:
-- Build a complete, cohesive outfit that best matches the request
-- Aim to cover different categories (top, bottom, shoes; add outerwear or accessory only if it meaningfully enhances the outfit)
-- Prioritise style, color harmony, and occasion fit over completeness — a well-matched 2-piece beats a mismatched 4-piece
-- If the wardrobe lacks something key (e.g. no shoes), acknowledge it briefly in reasoning
-- outfitName should be evocative and short (3–5 words), like a fashion editorial title
+- Build a cohesive outfit. 
+- If the user asks for "multiple outfits" or a "schedule-based plan", return an array in the "outfits" field.
+- Ensure items chosen are NOT recently worn (check lastWorn).
+- Return ONLY a valid JSON object.
 
-Return ONLY a valid JSON object, no markdown:
+FORMAT (Single):
 {
-  "outfitItems": [
-    { "itemId": "id from wardrobe", "role": "e.g. base layer / statement piece / bottom / footwear" }
-  ],
-  "outfitName": "Creative short outfit name",
-  "reasoning": "2–3 sentences: why this outfit works for the request, what makes it cohesive, and any styling tip."
-}`;
+  "outfit": {
+    "outfitItems": [{ "itemId": "id", "role": "role" }],
+    "outfitName": "Name",
+    "reasoning": "Reasoning"
+  }
+}
+
+FORMAT (Multiple):
+{
+  "outfits": [
+    {
+      "outfitItems": [{ "itemId": "id", "role": "role" }],
+      "outfitName": "Evening Gala / Morning Meeting etc",
+      "reasoning": "Why this specific outfit for this time/event"
+    }
+  ]
+}
+`;
 
   const chain = getTextChain();
 
@@ -692,57 +687,67 @@ Return ONLY a valid JSON object, no markdown:
       return { items: [], reasoning: "Could not parse AI response." };
     }
 
-    // [ROBUSTNESS] Multi-layer normalization for LLM output
-    let rawOutfit = [];
-    if (Array.isArray(result)) {
-      rawOutfit = result;
-      result = { outfitItems: result, outfitName: "Suggested Outfit", reasoning: "Curated based on your query." };
-    } else if (result && result.outfitItems && Array.isArray(result.outfitItems)) {
-      rawOutfit = result.outfitItems;
-    } else if (result && typeof result === 'object') {
-      // Handle "top", "bottom", "shoes" style object
-      rawOutfit = Object.entries(result)
-        .filter(([key, value]) => value && (typeof value === 'string' || value.itemId))
-        .map(([key, value]) => (typeof value === 'string' ? { itemId: value, role: key } : value));
-    }
-
-    const enrichedItems = (rawOutfit || [])
-      .map(oi => {
-        const id = typeof oi === 'string' ? oi : (oi.itemId || oi.id);
-        const item = closet.find(c => c.id === id);
-        if (!item) return null;
-        return { ...item, role: oi.role || item.subcategory };
-      })
-      .filter(Boolean);
-
-    // Calculate Aggregate Outfit Cohesion (V & L) using items with styleVector
-    let totalSim = 0;
-    let totalLogic = 0;
-    let pairs = 0;
-
-    for (let i = 0; i < enrichedItems.length; i++) {
-      for (let j = i + 1; j < enrichedItems.length; j++) {
-        const a = enrichedItems[i];
-        const b = enrichedItems[j];
-        if (a && b && a.styleVector && b.styleVector) {
-          const sim = calculateSimilarity(a.styleVector, b.styleVector);
-          if (typeof sim === 'number' && !isNaN(sim)) {
-            totalSim += sim;
-            const isComp = a.category !== b.category;
-            totalLogic += isComp ? 0.9 : 0.4; 
-            pairs++;
-          }
-        }
+    // [ROBUSTNESS] Handle Single vs Multiple result
+    const processOutfit = (raw) => {
+      let rawItems = [];
+      if (raw.outfitItems && Array.isArray(raw.outfitItems)) {
+        rawItems = raw.outfitItems;
+      } else if (raw && typeof raw === 'object') {
+        rawItems = Object.entries(raw)
+          .filter(([key, value]) => value && (typeof value === 'string' || value.itemId))
+          .map(([key, value]) => (typeof value === 'string' ? { itemId: value, role: key } : value));
       }
-    }
 
-    return {
-      outfitName: result.outfitName || "Suggested Outfit",
-      reasoning: result.reasoning || "An ensemble curated by your AI stylist.",
-      items: enrichedItems,
-      visualCohesion: pairs > 0 ? (totalSim / pairs) : 0,
-      logicHarmony: pairs > 0 ? (totalLogic / pairs) : 0
+      const enrichedItems = (rawItems || [])
+        .map(oi => {
+          const id = typeof oi === 'string' ? oi : (oi.itemId || oi.id);
+          const item = closet.find(c => c.id === id);
+          if (!item) return null;
+          return { ...item, role: oi.role || item.subcategory };
+        })
+        .filter(Boolean);
+
+      // ── Calculate V (Visual) and L (Logic) for the outfit ──
+      let totalV = 0;
+      let totalL = 0;
+      let count = 0;
+
+      if (enrichedItems.length > 1) {
+        // Simple heuristic: compare all items to the first item (usually the 'anchor' like top/dress)
+        const anchor = enrichedItems[0];
+        for (let i = 1; i < enrichedItems.length; i++) {
+          const scores = calculateMatchingScores(anchor, enrichedItems[i]);
+          enrichedItems[i].visualSimilarity = scores.visualSimilarity;
+          enrichedItems[i].logicScore = scores.logicScore;
+          totalV += scores.visualSimilarity;
+          totalL += scores.logicScore;
+          count++;
+        }
+        // Anchor gets perfect score with itself
+        anchor.visualSimilarity = 1;
+        anchor.logicScore = 1;
+      } else if (enrichedItems.length === 1) {
+        enrichedItems[0].visualSimilarity = 1;
+        enrichedItems[0].logicScore = 1;
+        totalV = 1;
+        totalL = 1;
+        count = 1;
+      }
+
+      return {
+        outfitName: raw.outfitName || "Suggested Outfit",
+        reasoning: raw.reasoning || "Curated by your AI stylist.",
+        items: enrichedItems,
+        visualCohesion: count > 0 ? parseFloat((totalV / count).toFixed(2)) : 0,
+        logicHarmony: count > 0 ? parseFloat((totalL / count).toFixed(2)) : 0
+      };
     };
+
+    if (result.outfits && Array.isArray(result.outfits)) {
+      return result.outfits.map(processOutfit);
+    }
+    
+    return processOutfit(result.outfit || result);
   }, 'Search');
 }
 

@@ -18,6 +18,9 @@ import itemsRouter from './routes/items.js';
 import recommendRouter from './routes/recommend.js';
 import analyticsRouter from './routes/analytics.js';
 import profileRouter from './routes/profile.js';
+import calendarRouter from './routes/calendar.js';
+import weatherRouter from './routes/weather.js';
+import feedbackRouter from './routes/feedback.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -61,6 +64,9 @@ app.use('/api/recommend', recommendRouter);
 app.use('/api/search', recommendRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/calendar', calendarRouter);
+app.use('/api/weather', weatherRouter);
+app.use('/api/feedback', feedbackRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

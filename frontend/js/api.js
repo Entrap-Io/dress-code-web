@@ -105,6 +105,21 @@ const api = {
     return await this._fetch(`${API_BASE}/analytics`);
   },
 
+  async getEvents(date = null) {
+    const url = date ? `${API_BASE}/calendar/events?date=${date}` : `${API_BASE}/calendar/events`;
+    return await this._fetch(url);
+  },
+
+  async getWeather(lat, lon, city = null, date = null, hourly = false) {
+    const params = new URLSearchParams();
+    if (lat) params.append('lat', lat);
+    if (lon) params.append('lon', lon);
+    if (city) params.append('city', city);
+    if (date) params.append('date', date);
+    if (hourly) params.append('hourly', 'true');
+    return await this._fetch(`${API_BASE}/weather?${params.toString()}`);
+  },
+
   // Profile management
   async getProfile() {
     const data = await this._fetch(`${API_BASE}/profile`);
@@ -118,5 +133,13 @@ const api = {
       body: JSON.stringify(profile),
     });
     return data.profile;
+  },
+
+  async submitFeedback(feedbackData) {
+    return await this._fetch(`${API_BASE}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(feedbackData),
+    });
   }
 };

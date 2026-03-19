@@ -47,6 +47,13 @@ async function init() {
     await loadProfile();
 
     await loadItems();
+
+    // Load agenda if URL exists
+    if (userProfile?.icalUrl) await loadAgenda();
+
+    // Check for OOTD
+    checkOOTD();
+    loadWeather();
     
     // Restore view
     switchView(currentView);
@@ -74,11 +81,18 @@ function switchView(viewName) {
   if (viewName === 'storage') renderStorage();
   if (viewName === 'analytics') loadAnalytics();
   if (viewName === 'profile') renderProfile();
+  if (viewName === 'ootd') checkOOTD();
+  
+  // Persistence
+  localStorage.setItem('dresscode_view', viewName);
 }
 
 async function loadProfile() {
   try {
     userProfile = await api.getProfile();
+    updateProfileUI();
+    // Refresh agenda if profile updated
+    if (userProfile?.icalUrl) loadAgenda();
   } catch (err) {
     console.warn('Could not load profile, using defaults');
     userProfile = { gender: 'unisex', height: 175, weight: 70, bodyType: 'mesomorph' };
@@ -428,6 +442,9 @@ function setupEventListeners() {
       const formData = new FormData(profileForm);
       const updatedProfile = Object.fromEntries(formData.entries());
       
+      // Ensure lat/lon are numbers if present
+      if (updatedProfile.lat) updatedProfile.lat = Number(updatedProfile.lat);
+      if (updatedProfile.lon) updatedProfile.lon = Number(updatedProfile.lon);
       // Convert numeric fields
       if (updatedProfile.height) updatedProfile.height = Number(updatedProfile.height);
       if (updatedProfile.weight) updatedProfile.weight = Number(updatedProfile.weight);
@@ -435,6 +452,8 @@ function setupEventListeners() {
       try {
         userProfile = await api.updateProfile(updatedProfile);
         showToast('Profile saved successfully!', 'success');
+        updateProfileUI(); // Ensure toggle logic updates
+        if (userProfile.icalUrl) loadAgenda();
       } catch (err) {
         showToast('Failed to save profile', 'error');
       } finally {
@@ -526,6 +545,25 @@ function setupEventListeners() {
         if (item) item.status = 'closet';
         renderStorage();
         showToast('Cleaned and back in closet!', 'success');
+      }
+      else if (action === 'feedback') {
+        const { type, context, query: q, result, id: itemId } = actionBtn.dataset;
+        const feedbackValue = type === 'up' ? 1 : -1;
+        
+        // Visual feedback
+        const container = actionBtn.closest('.feedback-container');
+        container.querySelectorAll('.feedback-btn').forEach(b => b.classList.remove('active'));
+        actionBtn.classList.add('active');
+
+        await api.submitFeedback({
+          context,
+          query: q,
+          result,
+          itemId,
+          feedback: feedbackValue
+        });
+        
+        showToast(type === 'up' ? 'Thanks! We love it too ✨' : 'Got it. We will improve! 🛠️', 'info');
       }
       else if (action === 'worn-outfit') {
         const ids = id.split(',');
@@ -767,6 +805,11 @@ async function openItemModal(itemId) {
               <span class="score-tag vis" title="Visual Similarity">V: ${((rec.visualSimilarity || 0) * 100).toFixed(0)}%</span>
               <span class="score-tag logic" title="Logic Compatibility">L: ${((rec.logicScore || 0) * 100).toFixed(0)}%</span>
             </div>
+            <div class="feedback-container">
+              <span class="feedback-label">Match?</span>
+              <button class="feedback-btn up" data-action="feedback" data-type="up" data-context="recommendation" data-id="${rec.itemId}" data-result="${rec.subcategory}" title="Good match!">👍</button>
+              <button class="feedback-btn down" data-action="feedback" data-type="down" data-context="recommendation" data-id="${rec.itemId}" data-result="${rec.subcategory}" title="Bad match...">👎</button>
+            </div>
             <div class="rec-card-reason">${rec.reason || 'No reason provided.'}</div>
           </div>
         </div>
@@ -831,6 +874,11 @@ async function handleSearch() {
               <span class="score-tag vis" title="Visual Cohesion">V: ${((outfit.visualCohesion || 0) * 100).toFixed(0)}%</span>
               <span class="score-tag logic" title="Logical Harmony">L: ${((outfit.logicHarmony || 0) * 100).toFixed(0)}%</span>
             </div>
+            <div class="feedback-container" style="margin-left: auto;">
+              <span class="feedback-label">Outfit Goal?</span>
+              <button class="feedback-btn up" data-action="feedback" data-type="up" data-context="search" data-query="${query}" data-result="${outfit.outfitName}" title="Nailed it!">👍</button>
+              <button class="feedback-btn down" data-action="feedback" data-type="down" data-context="search" data-query="${query}" data-result="${outfit.outfitName}" title="Not quite...">👎</button>
+            </div>
           </div>
           <p class="outfit-result-reasoning">${outfit.reasoning || "Crafted specifically for your request."}</p>
         </div>
@@ -843,6 +891,10 @@ async function handleSearch() {
                 <div class="outfit-item-info">
                   <div class="outfit-item-role">${item.role || item.subcategory}</div>
                   <div class="outfit-item-name">${item.subcategory}</div>
+                  <div class="rec-score-row" style="margin-top:4px;">
+                    <span class="score-tag vis" style="font-size:0.5rem; padding:1px 4px;">V: ${((item.visualSimilarity || 0) * 100).toFixed(0)}%</span>
+                    <span class="score-tag logic" style="font-size:0.5rem; padding:1px 4px;">L: ${((item.logicScore || 0) * 100).toFixed(0)}%</span>
+                  </div>
                   <button class="action-btn tiny" data-action="worn" data-id="${item.id}" style="margin-top:5px; font-size:0.6rem;">👟 Wear</button>
                 </div>
               </div>
@@ -1085,5 +1137,422 @@ function renderAnalyticsData(data) {
   `;
 }
 
+// ── OOTD (Outfit of the Day) ───────────────────────────────────
+function checkOOTD() {
+  const saved = localStorage.getItem('dresscode_ootd');
+  const now = new Date();
+  
+  // Get Preferences
+  const [prefHour, prefMin] = (userProfile.ootdTime || "21:00").split(':').map(Number);
+  const triggerTime = new Date(now);
+  triggerTime.setHours(prefHour, prefMin, 0, 0);
+
+  let targetDate = now;
+  let isNextDay = false;
+  
+  if (now >= triggerTime) {
+    targetDate = new Date(now);
+    targetDate.setDate(now.getDate() + 1);
+    isNextDay = true;
+  }
+  
+  const targetDateStr = targetDate.toDateString();
+
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    // [FIX] Aggressive Invalidation: if it's London stale OR 15C mock OR mentions London in reasoning
+    const mentionsLondon = (parsed.outfit?.reasoning || "").includes('London') || (parsed.outfit?.outfitName || "").includes('London');
+    if (parsed.city === 'London' || mentionsLondon || (parsed.weather && parsed.weather.temp === 15)) {
+      console.log('🚮 Discarding stale/London OOTD');
+      localStorage.removeItem('dresscode_ootd');
+      generateOOTD(targetDate, isNextDay);
+      return;
+    }
+    
+    if (parsed.date === targetDateStr) {
+      renderOOTD(parsed.outfit, isNextDay, parsed.weather, parsed.eventsCount);
+      return;
+    }
+  }
+
+  generateOOTD(targetDate, isNextDay);
+}
+
+async function generateOOTD(targetDate = new Date(), isNextDay = false) {
+  const reasoningEl = document.getElementById('ootdHeroReasoning');
+  if (!reasoningEl) return;
+
+  const strategy = userProfile.ootdCountMode || 'single';
+  reasoningEl.textContent = `Curating your ${strategy === 'multiple' ? 'outfits' : 'look'} for ${isNextDay ? 'tomorrow' : 'today'}...`;
+
+  try {
+    const dateStr = targetDate.toISOString().split('T')[0];
+    const lat = userProfile?.lat || null;
+    const lon = userProfile?.lon || null;
+    const city = userProfile?.location || '';
+
+    // Fetch correctly synced context
+    const weather = await api.getWeather(lat, lon, city, dateStr, true);
+    const res = await api.getEvents(dateStr);
+    const events = res.events || [];
+
+    const effectiveStrategy = (events.length > 0) ? strategy : 'single';
+    const eventSummaries = events.map(e => e.summary);
+
+    // Map events to their specific hourly weather for AI precision
+    if (weather.hourly && events.length > 0) {
+      weather.events = events.map(ev => {
+        const hour = new Date(ev.start).getHours();
+        const hWeather = weather.hourly[hour] || weather.hourly[12];
+        return {
+          event: ev.summary,
+          time: new Date(ev.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          temp: hWeather.temp,
+          condition: hWeather.condition
+        };
+      });
+      console.log(`🧠 AI Context: Mapped ${events.length} events to Ankara hourly weather.`);
+    }
+
+    const query = isNextDay 
+      ? `curate ${effectiveStrategy === 'multiple' ? 'multiple outfits' : 'a perfect outfit'} for tomorrow (${dateStr}) in ${city} based on schedule: ${eventSummaries.join(', ')} and hourly weather.`
+      : `curate ${effectiveStrategy === 'multiple' ? 'multiple outfits' : 'a perfect outfit'} for today (${dateStr}) in ${city} based on schedule: ${eventSummaries.join(', ')} and weather.`;
+      
+    const searchRes = await api.searchOutfit(query, null, weather);
+    
+    if (searchRes.success && searchRes.outfit) {
+      const ootd = {
+        date: targetDate.toDateString(),
+        dateStr: dateStr,
+        outfit: searchRes.outfit,
+        weather: weather,
+        eventsCount: events.length,
+        strategy: effectiveStrategy,
+        city: city
+      };
+      localStorage.setItem('dresscode_ootd', JSON.stringify(ootd));
+      renderOOTD(searchRes.outfit, isNextDay, weather, events.length);
+    }
+  } catch (err) {
+    console.warn('OOTD Generation failed:', err);
+    reasoningEl.textContent = "Could not generate OOTD. Please check your connection.";
+  }
+}
+
+function renderOOTD(outfitData, isNextDay = false, weather = null, eventsCount = 0) {
+  const badgeEl = document.getElementById('ootdHeroBadge');
+  const nameEl = document.getElementById('ootdHeroName');
+  const reasoningEl = document.getElementById('ootdHeroReasoning');
+  const itemsEl = document.getElementById('ootdHeroItems');
+  const weatherEl = document.getElementById('ootdWeatherInfo');
+  const agendaEl = document.getElementById('ootdAgendaInfo');
+
+  if (!badgeEl) return; // Not on the right view yet
+
+  // Handle both single outfit and array of outfits
+  const outfits = Array.isArray(outfitData) ? outfitData : [outfitData];
+  
+  badgeEl.textContent = isNextDay ? "Tomorrow's Sneak Peek" : "Stylist's Pick";
+  
+  if (weather) {
+    let displayTemp = weather.temp;
+    let displayCond = weather.conditionText;
+    
+    // If it's an hourly payload, pick the most relevant hour
+    if (weather.hourly && weather.hourly.length > 0) {
+      const now = new Date();
+      const currentHour = now.getHours();
+      // If today, use current hour. If tomorrow, use noon.
+      let targetHour = 12; // Default for tomorrow
+      if (!isNextDay) {
+        // Today logic: if too early, show a more relevant daytime start (e.g. 8:30 AM)
+        targetHour = (currentHour < 7) ? 8 : currentHour;
+      }
+      
+      const hourData = weather.hourly[targetHour] || weather.hourly[0];
+      displayTemp = hourData.temp;
+      displayCond = hourData.condition;
+      
+      // [ENHANCEMENT] If early morning, show a "Daytime" temp too if requested
+      if (!isNextDay && currentHour < 7) {
+        const middayData = weather.hourly[12];
+        if (middayData) {
+          console.log(`🌦️ Early birds: Using 8:30 AM (${displayTemp}C) + Midday (${middayData.temp}C) logic`);
+          // Optionally display both if you want to be fancy
+          displayTemp = `${displayTemp}° (Day: ${middayData.temp}°)`;
+        }
+      }
+    }
+    
+    if (displayTemp !== undefined) {
+      weatherEl.textContent = `🌡️ ${displayTemp}°C, ${displayCond}`;
+    }
+  }
+  agendaEl.textContent = `📅 ${eventsCount} events scheduled`;
+
+  // Clear and render all outfits
+  itemsEl.innerHTML = '';
+  nameEl.textContent = outfits.length > 1 ? "Your Scheduled Ensembles" : (outfits[0].outfitName || "Your Daily Ensemble");
+  reasoningEl.textContent = outfits.length > 1 ? "I've curated a sequence of looks tailored to your specific events today." : (outfits[0].reasoning || "");
+
+  outfits.forEach((outfit, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ootd-hero-subcard';
+    const itemIds = (outfit.items || []).map(i => i.id);
+    
+    card.innerHTML = `
+      <div class="ootd-subcard-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h3 class="ootd-subcard-title">${outfit.outfitName}</h3>
+          <div class="outfit-scores" style="margin-top: 5px;">
+            <span class="score-tag vis" title="Visual Cohesion">V: ${((outfit.visualCohesion || 0) * 100).toFixed(0)}%</span>
+            <span class="score-tag logic" title="Logical Harmony">L: ${((outfit.logicHarmony || 0) * 100).toFixed(0)}%</span>
+          </div>
+          <div class="feedback-container">
+            <span class="feedback-label">Love it?</span>
+            <button class="feedback-btn up" data-action="feedback" data-type="up" data-context="ootd" data-result="${outfit.outfitName}" title="Yes!">👍</button>
+            <button class="feedback-btn down" data-action="feedback" data-type="down" data-context="ootd" data-result="${outfit.outfitName}" title="No...">👎</button>
+          </div>
+          <p class="ootd-subcard-reasoning" style="margin-top: 8px;">${outfit.reasoning}</p>
+        </div>
+        <button class="btn-viz-ootd" data-ids="${itemIds.join(',')}">✨ Visualize</button>
+      </div>
+      <div class="ootd-subcard-body">
+        <div class="ootd-subcard-items">
+          ${(outfit.items || []).map(item => `
+            <img src="${BACKEND_BASE}${item.imageUrl || item.image}" class="ootd-item-thumb" title="${item.role || ''}: ${item.subcategory || ''} (V: ${((item.visualSimilarity || 0) * 100).toFixed(0)}%, L: ${((item.logicScore || 0) * 100).toFixed(0)}%)" />
+          `).join('')}
+        </div>
+        <div class="ootd-viz-container" id="viz-container-${idx}">
+          <div class="searching-indicator tiny" style="margin:2rem 0;">
+            <div class="spinner"></div>
+            <span>AI is painting your look...</span>
+          </div>
+          <img class="ootd-viz-image" style="display:none" />
+        </div>
+      </div>
+    `;
+
+    // Handle visualization for this specific card
+    const vizBtn = card.querySelector('.btn-viz-ootd');
+    const itemsGrid = card.querySelector('.ootd-subcard-items');
+    const vizContainer = card.querySelector('.ootd-viz-container');
+    const vizImg = vizContainer.querySelector('img');
+    const indicator = vizContainer.querySelector('.searching-indicator');
+
+    vizBtn.onclick = async (e) => {
+      e.stopPropagation();
+      const isVisible = vizContainer.style.display === 'flex';
+      
+      if (isVisible) {
+        vizContainer.style.display = 'none';
+        itemsGrid.style.display = 'flex';
+        vizBtn.textContent = '✨ Visualize';
+      } else {
+        vizContainer.style.display = 'flex';
+        itemsGrid.style.display = 'none';
+        vizBtn.textContent = '🔙 Back to Items';
+        
+        if (!vizImg.src) {
+          try {
+            const gender = userProfile?.gender || 'unisex';
+            const { imageUrl } = await api.visualizeOutfit(itemIds, gender, currentWeather);
+            vizImg.src = `${BACKEND_BASE}${imageUrl}`;
+            vizImg.onload = () => {
+              indicator.style.display = 'none';
+              vizImg.style.display = 'block';
+            };
+          } catch (err) {
+            indicator.innerHTML = `<span style="color:var(--red)">Failed to visualize</span>`;
+          }
+        }
+      }
+    };
+
+    itemsEl.appendChild(card);
+  });
+
+  const strategy = userProfile.ootdCountMode || 'single';
+  const targetDate = new Date();
+  if (isNextDay) targetDate.setDate(targetDate.getDate() + 1);
+  const targetDateStr = targetDate.toDateString();
+
+  const strategyBtns = document.querySelectorAll('.strategy-btn');
+  strategyBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.strategy === (strategy === 'multiple' ? 'multiple' : 'single'));
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      userProfile.ootdCountMode = btn.dataset.strategy;
+      generateOOTD(new Date(targetDateStr), isNextDay);
+    };
+  });
+
+  document.getElementById('refreshHeroOotdBtn').onclick = () => {
+    const now = new Date();
+    const [prefHour, prefMin] = (userProfile.ootdTime || "21:00").split(':').map(Number);
+    const trigger = new Date(now);
+    trigger.setHours(prefHour, prefMin, 0, 0);
+    
+    let target = now;
+    if (now >= trigger) {
+      target = new Date(now);
+      target.setDate(now.getDate() + 1);
+    }
+    generateOOTD(target, now >= trigger);
+  };
+
+  document.getElementById('markHeroOotdWornBtn').onclick = async () => {
+    const outfitItems = outfits.flatMap(o => o.items || []);
+    const nowStr = new Date().toISOString();
+    
+    for (const item of outfitItems) {
+      if (item.id) {
+        await api.markItemWorn(item.id);
+        // Reactive local update
+        const localItem = allItems.find(i => i.id === item.id);
+        if (localItem) {
+          localItem.lastWorn = nowStr;
+        }
+      }
+    }
+    showToast('Outfit marked as worn today!', 'success');
+    renderCloset();
+    renderLaundry();
+  };
+}
+
+// ── Agenda / Calendar ──────────────────────────────────────────
+async function loadAgenda() {
+  const widget = document.getElementById('agendaWidget');
+  const list = document.getElementById('agendaList');
+  if (!widget || !list) return;
+
+  try {
+    const res = await api.getTodayEvents();
+    const events = res.events || [];
+    if (events && events.length > 0) {
+      widget.style.display = 'block';
+      list.innerHTML = events.map(ev => `
+        <div class="agenda-event">
+          <span class="time">${new Date(ev.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+          <span>${ev.summary}</span>
+        </div>
+      `).join('');
+    } else {
+      widget.style.display = 'none';
+    }
+  } catch (err) {
+    console.warn('Could not load agenda:', err.message);
+    widget.style.display = 'none';
+  }
+}
+
 // ── Start ──────────────────────────────────────────────────────
 init();
+
+function updateProfileUI() {
+  const form = document.getElementById('profileForm');
+  if (!form || !userProfile) return;
+
+  // Fill standard inputs
+  const inputs = form.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => {
+    if (userProfile[input.name] !== undefined) {
+      input.value = userProfile[input.name];
+    }
+  });
+
+  // Handle custom selectors (option-cards)
+  form.querySelectorAll('.option-card-grid').forEach(grid => {
+    const val = userProfile[grid.dataset.selectName];
+    if (val) {
+      grid.querySelectorAll('.option-card').forEach(c => {
+        c.classList.toggle('active', c.dataset.value === val);
+      });
+      const hidden = grid.querySelector('input[type="hidden"]');
+      if (hidden) hidden.value = val;
+    }
+  });
+
+  const modeSelect = document.getElementById('ootdCountModeSelect');
+  const multipleBtn = document.getElementById('heroMultiBtn');
+
+  if (modeSelect) {
+    if (!userProfile.icalUrl) {
+      modeSelect.value = 'single';
+      modeSelect.disabled = true;
+      document.getElementById('ootdCountTip').textContent = "⚠️ Sync your calendar to enable Multi-Outfit mode.";
+    } else {
+      modeSelect.disabled = false;
+      document.getElementById('ootdCountTip').textContent = "AI will curate multiple looks if your schedule is busy.";
+    }
+  }
+
+  if (multipleBtn) {
+    multipleBtn.disabled = !userProfile.icalUrl;
+    if (!userProfile.icalUrl) {
+      multipleBtn.classList.remove('active');
+      document.querySelector('[data-strategy="single"]')?.classList.add('active');
+    }
+  }
+}
+
+async function loadWeather() {
+  const widget = document.getElementById('weatherWidget');
+  if (!widget) return;
+  
+  try {
+    let lat = null, lon = null;
+
+    // Use browser geolocation for "real" local data
+    const getPos = () => new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+    
+    try {
+      const pos = await getPos();
+      lat = pos.coords.latitude;
+      lon = pos.coords.longitude;
+      
+      // Critical: Update in-memory profile immediately so OOTD logic has it
+      if (userProfile) {
+        userProfile.lat = lat;
+        userProfile.lon = lon;
+      }
+      
+      console.log(`🌐 Geolocation detected: ${lat}, ${lon}`);
+      
+      // Attempt reverse geocoding via our backend proxy to avoid CORS
+      try {
+        const geoRes = await fetch(`${API_BASE}/weather/reverse-geocode?lat=${lat}&lon=${lon}`);
+        const geoData = await geoRes.json();
+        if (geoData.success && geoData.city) {
+          const detectedCity = geoData.city;
+          userProfile.location = detectedCity;
+          if (document.getElementById('profileLocationInput')) {
+            document.getElementById('profileLocationInput').value = detectedCity;
+          }
+          console.log(`📍 Reverse Geocoded City (Proxy): ${detectedCity}`);
+        }
+      } catch (e) { console.warn('Reverse geocoding (proxy) failed'); }
+      
+      // Populate hidden inputs for persistence
+      if (document.getElementById('profileLat')) document.getElementById('profileLat').value = lat;
+      if (document.getElementById('profileLon')) document.getElementById('profileLon').value = lon;
+    } catch (geoErr) {
+      console.warn('Geolocation denied or failed, falling back to profile location');
+    }
+
+    const city = userProfile?.location || '';
+    const data = await api.getWeather(lat, lon, userProfile?.location);
+    
+    currentWeather = data;
+    widget.style.display = 'flex';
+    widget.querySelector('.weather-icon').textContent = data.icon;
+    widget.querySelector('.weather-temp').textContent = `${data.temp}°C`;
+    widget.querySelector('.weather-city').textContent = data.city && data.city !== 'Current Location' ? data.city : 'Ankara';
+    
+    return data;
+  } catch (err) {
+    console.warn('Weather fetch failed:', err.message);
+    widget.style.display = 'none';
+  }
+}

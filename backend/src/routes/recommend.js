@@ -4,6 +4,8 @@ import fs from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { removeBackground } from '@imgly/background-removal-node';
 import { getOutfitRecommendations, searchCloset, visualizeOutfit } from '../services/gemini.js';
+import ical from 'node-ical';
+import axios from 'axios';
 
 // Recreate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -29,16 +31,92 @@ function readItems() {
   }
 }
 
+async function getEventsForDate(icalUrl, targetDate) {
+  if (!icalUrl) return [];
+  try {
+    const response = await axios.get(icalUrl);
+    const data = ical.parseICS(response.data);
+    
+    const startOfTarget = new Date(targetDate);
+    startOfTarget.setHours(0, 0, 0, 0);
+    const endOfTarget = new Date(targetDate);
+    endOfTarget.setHours(23, 59, 59, 999);
+    
+    const events = [];
+    for (const k in data) {
+      const ev = data[k];
+      if (ev.type === 'VEVENT') {
+        const start = new Date(ev.start);
+        const end = new Date(ev.end);
+        if ((start >= startOfTarget && start <= endOfTarget) || (end >= startOfTarget && end <= endOfTarget)) {
+          events.push({
+            summary: ev.summary,
+            start: start.toISOString(),
+            end: end.toISOString()
+          });
+        }
+      }
+    }
+    // Sort events by time
+    return events.sort((a, b) => new Date(a.start) - new Date(b.start));
+  } catch (e) {
+    console.warn('⚠️ Calendar fetch failed:', e.message);
+    return [];
+  }
+}
+
 // ── Search Handler Logic ──────────────────────────────
 async function handleSearch(req, res) {
   try {
-    const { query, stylingMode, weather } = req.body;
+    const { query, stylingMode, weather: clientWeather } = req.body;
     const items = readItems();
     const profile = readProfile();
     const finalMode = stylingMode || profile.gender || 'unisex';
 
-    const outfit = await searchCloset(query, items, finalMode, weather, profile);
-    res.json({ success: true, outfit });
+    // OOTD Smart Detection: If query looks like an OOTD request, be smart
+    const isOOTD = query.toLowerCase().includes('curate') || query.toLowerCase().includes('outfit for');
+    const isNextDay = query.toLowerCase().includes('tomorrow') || query.toLowerCase().includes('next day');
+    
+    // Determine Target Date
+    const targetDate = new Date();
+    if (isNextDay) targetDate.setDate(targetDate.getDate() + 1);
+    const dateStr = targetDate.toISOString().split('T')[0];
+
+    // Fetch Events for that date
+    const agenda = await getEventsForDate(profile.icalUrl, targetDate);
+    
+    let weatherContext = clientWeather;
+    
+    // If OOTD, fetch real hourly forecast if coordinates available
+    if (isOOTD && profile.lat && profile.lon) {
+      try {
+        const weatherUrl = `http://localhost:${process.env.PORT || 3001}/api/weather?lat=${profile.lat}&lon=${profile.lon}&hourly=true&date=${dateStr}`;
+        const wRes = await axios.get(weatherUrl);
+        if (wRes.data.success) {
+          // Map each event to its hourly weather
+          weatherContext = { 
+            base: clientWeather,
+            forecast: wRes.data.hourly,
+            events: agenda.map(ev => {
+              const evHour = new Date(ev.start).getHours();
+              const hourWeather = wRes.data.hourly[evHour] || wRes.data.hourly[0];
+              return {
+                summary: ev.summary,
+                startTime: ev.start,
+                temp: hourWeather.temp,
+                condition: hourWeather.condition
+              };
+            })
+          };
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not fetch hourly context:', e.message);
+      }
+    }
+
+    const agendaSummary = agenda.map(ev => `${ev.summary} (${new Date(ev.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})`);
+    const outfit = await searchCloset(query, items, finalMode, weatherContext, profile, agendaSummary);
+    res.json({ success: true, outfit, agenda });
   } catch (err) {
     console.error('❌ Search error:', err.message);
     res.status(500).json({ success: false, error: err.message });
@@ -88,7 +166,8 @@ router.post('/', async (req, res) => {
     }
 
     console.log(`👗 Getting recommendations for: ${targetItem.subcategory} (Mode: ${finalMode})`);
-    const recommendations = await getOutfitRecommendations(targetItem, items, finalMode, weather, profile);
+    const agenda = await getEventsForDate(profile.icalUrl, new Date());
+    const recommendations = await getOutfitRecommendations(targetItem, items, finalMode, weather, profile, agenda);
 
     // Enrich recommendations with full item data
     const enriched = (recommendations || [])
